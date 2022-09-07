@@ -120,3 +120,11 @@ canvas {
   width: 100%;
 
 }
+
+.footer {
+  z-index: 1;
+  position: fixed;
+  bottom: 0;
+  right: 0;
+  margin: 1rem;
+}
