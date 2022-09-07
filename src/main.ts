@@ -1,5 +1,4 @@
 import './style.css'
-import typescriptLogo from './typescript.svg'
 import QR from 'qrcode'
 
 const $ = (selector: string) => document.getElementById(selector)
