@@ -3,8 +3,17 @@ import QR from 'qrcode'
 
 const $ = (selector: string) => document.getElementById(selector)
 
+const max = 400
+const min = 50
+
+let size = 200
+let values = ''
+
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   <div>
+
+    
+
     <div class="header">
       <h1>Generador de QRs</h1>
     </div>
@@ -15,20 +24,34 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     </div>
 
     <div class="footer">
-      <p>❤ por <a href="https://github.com/maxterjunior">Mj.asm</a></p>
+    <input id="size" value="${size}" placeholder="Tamaño" type="number" max="${max}" min="${min}"> <p>❤ por <a href="https://github.com/maxterjunior">Mj.asm</a></p>
     </div>
       
   </div>
 `
 
+const renderQrs = () => {
+  const v = values.split(' ').filter((v: string) => v)
+  $('output')!.innerHTML = ''
+  v.forEach((value: string) => {
+    const canvas = document.createElement('canvas')
+    QR.toCanvas(canvas, value, { width: size })
+    $('output')!.appendChild(canvas)
+  })
+}
+
+$('size')!.addEventListener('input', (e) => {
+  const v = parseInt((e.target as HTMLInputElement).value)
+  if (v > max) { size = max; ($('size') as HTMLInputElement)!.value = size.toString() }
+  else if (v < min) size = min
+  else size = v;
+
+  renderQrs()
+})
+
 $('input')!.addEventListener('input', (e: any) => {
   if (e.target && e.target.value) {
-    const values = e.target.value.split(' ').filter((v: string) => v)
-    $('output')!.innerHTML = ''
-    values.forEach((value: string) => {
-      const canvas = document.createElement('canvas')
-      QR.toCanvas(canvas, value,{ width: 200 })
-      $('output')!.appendChild(canvas)
-    })
+    values = e.target.value
+    renderQrs()
   }
 })
