@@ -113,11 +113,11 @@ button:focus-visible {
 }
 
 canvas {
-  padding: 1rem;
+  padding: 2.5rem;
 }
 
 .input {
-  width: 100%;
+  width: calc(100% - 10rem);
 
 }
 

@@ -8,6 +8,7 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
+    "deplot-init":".\\deploy.sh",
     "deploy": "npm run build && gh-pages -d dist"
   },
   "devDependencies": {

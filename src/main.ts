@@ -27,7 +27,7 @@ $('input')!.addEventListener('input', (e: any) => {
     $('output')!.innerHTML = ''
     values.forEach((value: string) => {
       const canvas = document.createElement('canvas')
-      QR.toCanvas(canvas, value,)
+      QR.toCanvas(canvas, value,{ width: 200 })
       $('output')!.appendChild(canvas)
     })
   }
