@@ -118,7 +118,7 @@ canvas {
 
 .input {
   width: calc(100% - 10rem);
-
+  height: 1rem;
 }
 
 #size{
