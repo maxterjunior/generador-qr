@@ -121,7 +121,7 @@ canvas {
   height: 1rem;
 }
 
-#size{
+#size {
   width: 4rem;
   margin-right: 1rem;
   text-align: center;
@@ -132,7 +132,9 @@ canvas {
   z-index: 1;
   position: fixed;
   bottom: 0;
+  height: 1.5rem;
   right: 0;
   margin: 1rem;
   display: flex;
+  align-items: center;
 }
