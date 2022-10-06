@@ -31,7 +31,8 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
 `
 
 const renderQrs = () => {
-  const v = values.split(' ').filter((v: string) => v)
+  // regular expression for spaces and line breaks
+  const v = values.split(/\s/g).filter((v: string) => v)
   $('output')!.innerHTML = ''
   v.forEach((value: string) => {
     const canvas = document.createElement('canvas')
