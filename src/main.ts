@@ -12,8 +12,6 @@ let values = ''
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   <div>
 
-    
-
     <div class="header">
       <h1>Generador de QRs</h1>
     </div>
@@ -29,6 +27,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
       
   </div>
 `
+
 
 const renderQrs = () => {
   // regular expression for spaces and line breaks
@@ -53,6 +52,25 @@ $('size')!.addEventListener('input', (e) => {
 $('input')!.addEventListener('input', (e: any) => {
   if (e.target && e.target.value) {
     values = e.target.value
+    try {
+      localStorage.setItem('values', values)
+    } catch (error) {
+      console.error('Error al guardar valores', error)
+    }
     renderQrs()
+  } else {
+    $('output')!.innerHTML = ''
   }
 })
+
+try {
+  const cache = localStorage.getItem('values')
+  if (cache) {
+    values = cache;
+    ($('input') as HTMLInputElement).value = values
+    renderQrs()
+  }
+
+} catch (error) {
+  console.error('Error al obtener valores anteriores', error)
+}
