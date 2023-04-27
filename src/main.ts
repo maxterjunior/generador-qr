@@ -42,6 +42,20 @@ const renderQrs = () => {
   });
 };
 
+const reziseTextarea = () => {
+  const textarea = $("input") as HTMLTextAreaElement;
+  if (!textarea) return;
+  textarea.style.height = "auto";
+  textarea.style.height = (textarea.scrollHeight) + "px";
+  if (textarea.scrollHeight >= 200) {
+    textarea.style.overflowY = "scroll";
+    textarea.style.height = "200px";
+  } else if (textarea.value.length <= 1) {
+    textarea.style.overflowY = "hidden";
+    textarea.style.height = "15px";
+  }
+}
+
 $("size")!.addEventListener("input", (e) => {
   const v = parseInt((e.target as HTMLInputElement).value);
   if (v > max) {
@@ -54,16 +68,20 @@ $("size")!.addEventListener("input", (e) => {
 });
 
 $("input")!.addEventListener("input", (e: any) => {
+  
+  reziseTextarea()
+
   if (e.target && e.target.value) {
     values = e.target.value;
     try {
-      localStorage.setItem("values", values);
+      localStorage.setItem("values", values || '');
     } catch (error) {
       console.error("Error al guardar valores", error);
     }
     renderQrs();
   } else {
     $("output")!.innerHTML = "";
+    localStorage.removeItem("values");
   }
 });
 
@@ -96,6 +114,7 @@ try {
   if (cache) {
     values = cache;
     ($("input") as HTMLInputElement).value = values;
+    reziseTextarea()
     renderQrs();
   }
 } catch (error) {
