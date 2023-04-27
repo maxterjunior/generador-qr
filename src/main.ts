@@ -12,13 +12,13 @@ let data: any[] = [];
 
 document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
   <div>
+    <div class="header-container">
+      <div class="header">
+        <h1>Generador de QRs</h1>
+      </div>
 
-    <div class="header">
-      <h1>Generador de QRs</h1>
+      <textarea class="input" id="input" placeholder="Escribe algo"></textarea>
     </div>
-
-    <textarea class="input" id="input" placeholder="Escribe algo"></textarea>
-
     <div class="card" id="output" >
     </div>
 
