@@ -23,7 +23,7 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
     </div>
 
     <div class="footer">
-    <button id="print"> imprimir </button>
+    <button id="print" style="margin-right:10px"> imprimir </button> 
     <input id="size" value="${size}" placeholder="Tamaño" type="number" max="${max}" min="${min}"> <p>❤ por <a href="https://github.com/maxterjunior">Mj.asm</a></p>
     </div>
       
@@ -68,27 +68,27 @@ $("input")!.addEventListener("input", (e: any) => {
 });
 
 $("print")!.addEventListener("click", () => {
-  const popupWin = window.open(
-    "",
-    "_blank",
-    "top=0,left=0,height=100%,width=auto"
-  );
-  popupWin?.document.open();
-  popupWin?.document.write(`
-  <html>
-  <head>
-    <title>Impresión de fotochecks</title>
-    <meta charset="utf-8">
-  </head>
-   <body onload="window.print()">
-   </body>
-   <script>
-    const data = JSON.parse('${JSON.stringify(data)}')
-    const html = data.map(v=>'<img src="https://chart.googleapis.com/chart?chs=200x200&cht=qr&chl=\${v}&choe=UTF-8" ></img>').join(' ')
-    document.body.innerHTML = html
-    </script>
-  </html>
-`);
+  const html = data.map((v) => `<img src="https://chart.googleapis.com/chart?chs=200x200&cht=qr&chl=${v}&choe=UTF-8" ></img>`).join(" ");
+  // const popupWin = window.open("", "", "top=0,left=0,height=100%,width=auto");
+  // popupWin?.document.open();
+  // popupWin?.document.write(`
+  //   <html>
+  //   <head>
+  //     <title>Impresión de Qrs</title>
+  //     <meta charset="utf-8">
+  //     <style></style>
+  //   </head>
+  //    <body onload="window.print();window.close()">
+  //    ${html}
+  //    </body>
+  //   </html>
+  // `);
+
+  // Abre un nuevo tab con el contenido e imprime luego de cargar las imagenes
+  const win = window.open();
+  win?.document.write(html);
+  // win?.document.onload = () => win?.print();
+  // win?.print();
 });
 
 try {
