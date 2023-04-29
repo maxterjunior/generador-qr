@@ -86,7 +86,36 @@ $("input")!.addEventListener("input", (e: any) => {
 });
 
 $("print")!.addEventListener("click", () => {
-  const html = data.map((v) => `<img src="https://chart.googleapis.com/chart?chs=200x200&cht=qr&chl=${v}&choe=UTF-8" ></img>`).join(" ");
+  const html = `
+  <html>
+  <head>
+    <title>Impresión de Qrs</title>
+    <meta charset="utf-8">
+    <style>
+      .qr {
+        display: inline-block;
+        margin: 10px;
+        text-align: center;
+      }
+      .qr img {
+        width: 200px;
+        height: 200px;
+      }
+      .qr p {
+        margin: 0;
+        font-size: 24px;
+        font-family: sans-serif;
+        font-weight: bold;
+        white-space: nowrap;
+      }
+    </style>
+
+  </head>
+    <body onload="window.print();">
+    ${data.map((v) => `<div class="qr"><img src="https://chart.googleapis.com/chart?chs=200x200&cht=qr&chl=${v}&choe=UTF-8" ></img><p>${v}</p></div>`).join(" ")}
+    </body>
+  </html>
+  `
   // const popupWin = window.open("", "", "top=0,left=0,height=100%,width=auto");
   // popupWin?.document.open();
   // popupWin?.document.write(`
