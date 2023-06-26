@@ -5,158 +5,6 @@ import Editable from "./components/editable";
 import { useEffect, useRef } from "preact/hooks";
 import QR from "qrcode";
 
-// import "./style.css";
-
-
-// const $ = (selector: string) => document.getElementById(selector);
-
-// const max = 400;
-// const min = 50;
-
-// let size = 200;
-// let values = "";
-// let data: any[] = [];
-
-// document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
-//   <div>
-//     <div class="header-container">
-//       <div class="header">
-//         <h1>Generador de QRs</h1>
-//       </div>
-
-//       <textarea class="input" id="input" placeholder="Escribe algo"></textarea>
-//     </div>
-//     <div class="card" id="output" >
-//     </div>
-
-//     <div class="footer">
-//     <button id="print" style="margin-right:10px"> imprimir </button> 
-//     <input id="size" value="${size}" placeholder="Tamaño" type="number" max="${max}" min="${min}"> <p>❤ por <a href="https://github.com/maxterjunior">Mj.asm</a></p>
-//     </div>
-
-//   </div>
-// `;
-
-// const renderQrs = () => {
-//   // regular expression for spaces and line breaks
-//   const v = values.split(/\s/g).filter((v: string) => v);
-//   data = v;
-//   $("output")!.innerHTML = "";
-//   v.forEach((value: string) => {
-//     const canvas = document.createElement("canvas");
-//     QR.toCanvas(canvas, value, { width: size });
-//     $("output")!.appendChild(canvas);
-//   });
-// };
-
-// const reziseTextarea = () => {
-//   const textarea = $("input") as HTMLTextAreaElement;
-//   if (!textarea) return;
-//   textarea.style.height = "auto";
-//   textarea.style.height = (textarea.scrollHeight) + "px";
-//   if (textarea.scrollHeight >= 200) {
-//     textarea.style.overflowY = "scroll";
-//     textarea.style.height = "200px";
-//   } else if (textarea.value.length <= 1) {
-//     textarea.style.overflowY = "hidden";
-//     textarea.style.height = "15px";
-//   }
-// }
-
-// $("size")!.addEventListener("input", (e) => {
-//   const v = parseInt((e.target as HTMLInputElement).value);
-//   if (v > max) {
-//     size = max;
-//     ($("size") as HTMLInputElement)!.value = size.toString();
-//   } else if (v < min) size = min;
-//   else size = v;
-
-//   renderQrs();
-// });
-
-// $("input")!.addEventListener("input", (e: any) => {
-
-//   reziseTextarea()
-
-//   if (e.target && e.target.value) {
-//     values = e.target.value;
-//     try {
-//       localStorage.setItem("values", values || '');
-//     } catch (error) {
-//       console.error("Error al guardar valores", error);
-//     }
-//     renderQrs();
-//   } else {
-//     $("output")!.innerHTML = "";
-//     localStorage.removeItem("values");
-//   }
-// });
-
-// $("print")!.addEventListener("click", () => {
-//   const html = `
-//   <html>
-//   <head>
-//     <title>Impresión de Qrs</title>
-//     <meta charset="utf-8">
-//     <style>
-//       .qr {
-//         display: inline-block;
-//         margin: 10px;
-//         text-align: center;
-//       }
-//       .qr img {
-//         width: 200px;
-//         height: 200px;
-//       }
-//       .qr p {
-//         margin: 0;
-//         font-size: 24px;
-//         font-family: sans-serif;
-//         font-weight: bold;
-//         white-space: nowrap;
-//       }
-//     </style>
-
-//   </head>
-//     <body onload="window.print();">
-//     ${data.map((v) => `<div class="qr"><img src="https://chart.googleapis.com/chart?chs=200x200&cht=qr&chl=${v}&choe=UTF-8" ></img><p>${v}</p></div>`).join(" ")}
-//     </body>
-//   </html>
-//   `
-//   // const popupWin = window.open("", "", "top=0,left=0,height=100%,width=auto");
-//   // popupWin?.document.open();
-//   // popupWin?.document.write(`
-//   //   <html>
-//   //   <head>
-//   //     <title>Impresión de Qrs</title>
-//   //     <meta charset="utf-8">
-//   //     <style></style>
-//   //   </head>
-//   //    <body onload="window.print();window.close()">
-//   //    ${html}
-//   //    </body>
-//   //   </html>
-//   // `);
-
-//   // Abre un nuevo tab con el contenido e imprime luego de cargar las imagenes
-//   const win = window.open();
-//   win?.document.write(html);
-//   // win?.document.onload = () => win?.print();
-//   // win?.print();
-// });
-
-// try {
-//   const cache = localStorage.getItem("values");
-//   if (cache) {
-//     values = cache;
-//     ($("input") as HTMLInputElement).value = values;
-//     reziseTextarea()
-//     renderQrs();
-//   }
-// } catch (error) {
-//   console.error("Error al obtener valores anteriores", error);
-// }
-
 // Migra a preact
 interface Tab {
     name: string;
@@ -243,7 +91,7 @@ const TextArea = () => {
     const resizeTextarea = () => {
         const textarea = ref?.current;
         if (textarea) {
-            const lines = textarea.value.split(/\r*\n/).length; 
+            const lines = textarea.value.split(/\r*\n/).length;
             if (lines > 5) {
                 textarea.style.overflowY = "scroll";
                 textarea.style.height = "200px";
@@ -314,6 +162,63 @@ const Footer = () => {
     </div>
 }
 
+const ButtonPrint = () => {
+
+    const print = () => {
+
+        const data = tabs.value[indexTab.value]?.values;
+
+        const html = `
+          <html>
+          <head>
+            <title>Impresión de Qrs</title>
+            <meta charset="utf-8">
+            <style>
+              .qr {
+                display: inline-block;
+                margin: 10px;
+                text-align: center;
+              }
+              .qr img {
+                width: 200px;
+                height: 200px;
+              }
+              .qr p {
+                margin: 0;
+                font-size: 24px;
+                font-family: sans-serif;
+                font-weight: bold;
+                white-space: nowrap;
+              }
+            </style>
+
+          </head>
+            <body onload="window.print();window.close()">
+            ${data.map((v) => `<div class="qr"><img src="https://chart.googleapis.com/chart?chs=200x200&cht=qr&chl=${v}&choe=UTF-8" ></img><p>${v}</p></div>`).join(" ")}
+            </body>
+          </html>
+          `
+
+        const win = window.open("", "print", "width=1000,height=600");
+        win!.document.write(html);
+        win!.document.close();
+    }
+
+    return <div class="fixed bottom-0 right-0 p-2">
+        <button onClick={print} class="bg-white rounded-md p-2 inline-flex items-center justify-center text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500">
+            <span class="sr-only">Print</span>
+            <svg class="h-6 w-6" fill="currentColor" stroke="currentColor" version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" enable-background="new 0 0 64 64" >
+                <g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <g id="Printer"> <path d="M57.7881012,14.03125H52.5v-8.0625c0-2.2091999-1.7909012-4-4-4h-33c-2.2091999,0-4,1.7908001-4,4v8.0625H6.2119002 C2.7871001,14.03125,0,16.8183498,0,20.2431507V46.513649c0,3.4248009,2.7871001,6.2119026,6.2119002,6.2119026h2.3798995 c0.5527,0,1-0.4472008,1-1c0-0.5527-0.4473-1-1-1H6.2119002C3.8896,50.7255516,2,48.8359489,2,46.513649V20.2431507 c0-2.3223,1.8896-4.2119007,4.2119002-4.2119007h51.5762024C60.1102982,16.03125,62,17.9208508,62,20.2431507V46.513649 c0,2.3223-1.8897018,4.2119026-4.2118988,4.2119026H56c-0.5527992,0-1,0.4473-1,1c0,0.5527992,0.4472008,1,1,1h1.7881012 C61.2128983,52.7255516,64,49.9384499,64,46.513649V20.2431507C64,16.8183498,61.2128983,14.03125,57.7881012,14.03125z M13.5,5.96875c0-1.1027999,0.8971996-2,2-2h33c1.1027985,0,2,0.8972001,2,2v8h-37V5.96875z"></path> <path d="M44,45.0322495H20c-0.5517998,0-0.9990005,0.4472008-0.9990005,0.9990005S19.4482002,47.0302505,20,47.0302505h24 c0.5517006,0,0.9990005-0.4472008,0.9990005-0.9990005S44.5517006,45.0322495,44,45.0322495z"></path>
+                    <path d="M44,52.0322495H20c-0.5517998,0-0.9990005,0.4472008-0.9990005,0.9990005S19.4482002,54.0302505,20,54.0302505h24 c0.5517006,0,0.9990005-0.4472008,0.9990005-0.9990005S44.5517006,52.0322495,44,52.0322495z"></path>
+                    <circle cx="7.9590998" cy="21.8405495" r="2"></circle>
+                    <circle cx="14.2856998" cy="21.8405495" r="2"></circle>
+                    <circle cx="20.6121998" cy="21.8405495" r="2"></circle>
+                    <path d="M11,62.03125h42v-26H11V62.03125z M13.4036999,38.4349518h37.1925964v21.1925964H13.4036999V38.4349518z"></path> </g> </g>
+            </svg>
+        </button>
+    </div>
+}
+
 const App = () => {
 
     useEffect(() => {
@@ -341,6 +246,7 @@ const App = () => {
         <TextArea />
         <TabContent />
         <Footer />
+        <ButtonPrint />
     </div>
 }
 
