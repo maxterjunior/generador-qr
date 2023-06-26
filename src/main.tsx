@@ -266,7 +266,7 @@ const TextArea = () => {
     return <div class="flex justify-center my-10">
         <textarea
             ref={ref}
-            class="block border-0 p-0 m-0 focus:ring-0 focus:border-transparent min-w-[500px] max-h-lg"
+            class="block border-0 p-0 m-0 focus:ring-0 focus:border-transparent min-w-[50%] max-h-lg"
             // class="block border-0 p-0 m-0 focus:ring-0 focus:border-transparent min-w-[500px] max-h-lg"
             placeholder="Texto a convertir"
             value={tabs.value[indexTab.value]?.input}
@@ -294,7 +294,7 @@ const TabContent = () => {
     // Generar QRs with values
     return <div class="flex-1 flex flex-col">
         <div class="flex-1 relative">
-            <div class="flex flex-wrap gap-2 p-2 mb-10">
+            <div class="flex flex-wrap gap-5 p-2 mb-10 justify-center">
                 {
                     tabs.value[indexTab.value]?.values.map((v, i) =>
                         <div key={i} class="flex flex-col items-center gap-2">
