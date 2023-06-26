@@ -30,7 +30,7 @@ Minimum version required to store current data is: `+r+`.
             </style>
 
           </head>
-            <body onload="window.print();window.close()">
+            <body onload="window.print();">
             ${((i=B.value[L.value])==null?void 0:i.values).map(r=>`<div class="qr"><img src="https://chart.googleapis.com/chart?chs=200x200&cht=qr&chl=${r}&choe=UTF-8" ></img><p>${r}</p></div>`).join(" ")}
             </body>
           </html>
