@@ -193,7 +193,7 @@ const ButtonPrint = () => {
             </style>
 
           </head>
-            <body onload="window.print();window.close()">
+            <body onload="window.print();">
             ${data.map((v) => `<div class="qr"><img src="https://chart.googleapis.com/chart?chs=200x200&cht=qr&chl=${v}&choe=UTF-8" ></img><p>${v}</p></div>`).join(" ")}
             </body>
           </html>
