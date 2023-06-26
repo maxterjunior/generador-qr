@@ -13,9 +13,9 @@ const Editable = ({
     const [isEditing, setEditing] = useState(false);
     const ref = useRef<HTMLInputElement>(null);
     // Event handler while pressing any key while editing
-    const handleKeyDown = (event, type) => {
-        // Handle when key is pressed
-    };
+    // const handleKeyDown = (event, type) => {
+    //     // Handle when key is pressed
+    // };
 
     /*
     - It will display a label is `isEditing` is false
@@ -36,7 +36,7 @@ const Editable = ({
             {isEditing ? (
                 <div
                     onBlur={() => setEditing(false)}
-                    onKeyDown={e => handleKeyDown(e, type)}
+                    // onKeyDown={e => handleKeyDown(e, type)}
                 >
                     <input
                         ref={ref}
