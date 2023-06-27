@@ -1,9 +1,9 @@
-import { render } from "preact";
 import { signal } from "@preact/signals";
-import "./index.css";
-import Editable from "./components/editable";
+import { render } from "preact";
 import { useEffect, useRef } from "preact/hooks";
 import QR from "qrcode";
+import Editable from "./components/editable";
+import "./index.css";
 
 // Migra a preact
 interface Tab {
@@ -39,15 +39,15 @@ const selectTab = (index: number) => {
 
 
 const HeaderTab = () => {
-    return <div class="header-container">
+    return <div class="header-container dark:bg-[#242424]">
         <div class="space-y-5">
-            <div class="border-b border-b-gray-200 overflow-y-hidden">
+            <div class="border-b border-b-gray-200 overflow-y-hidden dark:border-[#242424]">
                 <ul class="-mb-px flex items-center gap-4 text-sm font-medium overflow-x-auto">
                     {
                         tabs.value.map((_, i) =>
                             <li class="flex-1 max-w-xs min-w-[100px] ">
                                 <span
-                                    className={`cursor-pointer relative flex items-center justify-center gap-2 px-1 py-1 after:absolute after:left-0 after:bottom-0 after:h-0.5 after:w-full ${indexTab.value === i ? 'text-blue-700 after:bg-blue-700 hover:text-blue-700' : 'hover:after:bg-blue-400'}`}
+                                    className={`cursor-pointer relative flex items-center justify-center gap-2 px-1 py-1 after:absolute after:left-0 after:bottom-0 after:h-0.5 after:w-full ${indexTab.value === i ? 'text-blue-700 dark:text-blue-500 after:bg-blue-700 hover:text-blue-700 font-bold' : 'hover:after:bg-blue-400  dark:text-white'}`}
                                     onClick={() => selectTab(i)}
                                 >
                                     <Editable
@@ -62,7 +62,7 @@ const HeaderTab = () => {
                                         }}
                                     />
 
-                                    <button onClick={() => deleteTab(i)} type="button" class="bg-white rounded-md p-2 inline-flex items-center justify-center text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500">
+                                    <button onClick={() => deleteTab(i)} type="button" class="bg-white rounded-md p-2 inline-flex items-center justify-center text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500 dark:bg-[#242424]">
                                         <span class="sr-only">Close menu</span>
                                         <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -72,7 +72,7 @@ const HeaderTab = () => {
                             </li>
                         )
                     }
-                    <button onClick={addTab} type="button" class="bg-white rounded-md p-2 inline-flex items-center justify-center text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500">
+                    <button onClick={addTab} type="button" class="bg-white rounded-md p-2 inline-flex items-center justify-center text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500 dark:bg-[#242424]">
                         <span class="sr-only">Add Tab</span>
                         <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -111,11 +111,10 @@ const TextArea = () => {
         ref?.current?.focus();
     }, [])
 
-    return <div class="flex justify-center my-10">
+    return <div class="flex justify-center m-10">
         <textarea
             ref={ref}
-            class="block border-0 p-0 m-0 focus:ring-0 focus:border-transparent min-w-[50%] max-h-lg"
-            // class="block border-0 p-0 m-0 focus:ring-0 focus:border-transparent min-w-[500px] max-h-lg"
+            class="block p-2.5 w-full max-w-lg text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-300 focus:ring-blue-500 focus:border-blue-500 dark:bg-[#242424] dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
             placeholder="Texto a convertir"
             value={tabs.value[indexTab.value]?.input}
             onInput={(e) => {
@@ -135,19 +134,19 @@ const QRCode = ({ value, size }: { value: string, size: number }) => {
         if (!canvas.current) return;
         QR.toCanvas(canvas.current, value, { width: size });
     }, [value, size]);
-    return <canvas ref={canvas} />
+    return <canvas class='rounded-3xl' ref={canvas} />
 }
 
 const TabContent = () => {
     // Generar QRs with values
-    return <div class="flex-1 flex flex-col">
+    return <div class="flex-1 flex flex-col dark:bg-[#242424]">
         <div class="flex-1 relative">
-            <div class="flex flex-wrap gap-5 p-2 mb-10 justify-center">
+            <div class="flex flex-wrap gap-20 p-2 mb-10 justify-center">
                 {
                     tabs.value[indexTab.value]?.values.map((v, i) =>
                         <div key={i} class="flex flex-col items-center gap-2">
                             <QRCode value={v} size={200} />
-                            <span class="text-sm">{v}</span>
+                            <span class="text-base dark:text-white">{v}</span>
                         </div>
                     )
                 }
@@ -157,7 +156,7 @@ const TabContent = () => {
 }
 
 const Footer = () => {
-    return <div class="fixed bottom-0 w-full p-2 text-center">
+    return <div class="fixed bottom-0 w-full p-2 text-center z-0 dark:text-white">
         <p>❤ por <a href="https://github.com/maxterjunior">Mj.asm</a></p>
     </div>
 }
@@ -204,8 +203,8 @@ const ButtonPrint = () => {
         win!.document.close();
     }
 
-    return <div class="fixed bottom-0 right-0 p-2">
-        <button onClick={print} class="bg-white rounded-md p-2 inline-flex items-center justify-center text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500">
+    return <div class="fixed bottom-0 right-0 p-2 z-10">
+        <button onClick={print} class="bg-white dark:bg-[#242424] dark:hover:bg-[#3a3a3a] rounded-md p-2 inline-flex items-center justify-center text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500">
             <span class="sr-only">Print</span>
             <svg class="h-6 w-6" fill="currentColor" stroke="currentColor" version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" enable-background="new 0 0 64 64" >
                 <g id="SVGRepo_bgCarrier" stroke-width="0"></g>
@@ -247,7 +246,7 @@ const App = () => {
         }
     }, []);
 
-    return <div class="flex flex-col h-screen">
+    return <div class="flex flex-col h-screen dark:bg-[#242424]">
         <HeaderTab />
         <TextArea />
         <TabContent />
