@@ -1,6 +1,6 @@
 import { signal } from "@preact/signals";
 import { render } from "preact";
-import { useEffect, useRef } from "preact/hooks";
+import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import QR from "qrcode";
 import Editable from "./components/editable";
 import "./index.css";
@@ -155,7 +155,46 @@ const TabContent = () => {
     </div>
 }
 
+const YapeButton = () => {
+
+    const [show, setShow] = useState(false);
+    const ref = useRef<any>(null);
+
+    const logoYape = useMemo(() => {
+        return Math.random() > 0.5 ? true : false;
+    }, [])
+
+    useEffect(() => {
+        if (show) {
+            const listener = (e: any) => {
+                if (!ref.current?.contains(e.target)) {
+                    setShow(false);
+                }
+            }
+            document.addEventListener('click', listener);
+            return () => document.removeEventListener('click', listener);
+        }
+    }, [show])
+
+    return (
+        <>
+            <div onClick={() => setShow(!show)} >
+                {logoYape ?
+                    <img src='/generador-qr/yape.png' class="h-5" /> :
+                    <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M14.781,14.347h1.738c0.24,0,0.436-0.194,0.436-0.435v-1.739c0-0.239-0.195-0.435-0.436-0.435h-1.738c-0.239,0-0.435,0.195-0.435,0.435v1.739C14.347,14.152,14.542,14.347,14.781,14.347 M18.693,3.045H1.307c-0.48,0-0.869,0.39-0.869,0.869v12.17c0,0.479,0.389,0.869,0.869,0.869h17.387c0.479,0,0.869-0.39,0.869-0.869V3.915C19.562,3.435,19.173,3.045,18.693,3.045 M18.693,16.085H1.307V9.13h17.387V16.085z M18.693,5.653H1.307V3.915h17.387V5.653zM3.48,12.608h7.824c0.24,0,0.435-0.195,0.435-0.436c0-0.239-0.194-0.435-0.435-0.435H3.48c-0.24,0-0.435,0.195-0.435,0.435C3.045,12.413,3.24,12.608,3.48,12.608 M3.48,14.347h6.085c0.24,0,0.435-0.194,0.435-0.435s-0.195-0.435-0.435-0.435H3.48c-0.24,0-0.435,0.194-0.435,0.435S3.24,14.347,3.48,14.347"></path>
+                    </svg>}
+            </div>
+            {show ? <div class="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center">
+                <img ref={ref} src='/generador-qr/yape-cristian.webp' class="max-h-[70%] border-collapse rounded-md" />
+            </div> : null
+            }
+        </>
+    )
+}
+
 const FloatSocialNetwork = () => {
+
     return <div class="fixed bottom-0 left-0 p-2 z-10 dark:text-white gap-3 flex">
         {/* <!-- Instagram --> */}
         <a href='https://instagram.com/caballero_cristian_abcs?utm_source=qr&igshid=NGExMmI2YTkyZg%3D%3D' target='_blank' rel='noreferrer'>
@@ -180,6 +219,19 @@ const FloatSocialNetwork = () => {
                     d="M4.98 3.5c0 1.381-1.11 2.5-2.48 2.5s-2.48-1.119-2.48-2.5c0-1.38 1.11-2.5 2.48-2.5s2.48 1.12 2.48 2.5zm.02 4.5h-5v16h5v-16zm7.982 0h-4.968v16h4.969v-8.399c0-4.67 6.029-5.052 6.029 0v8.399h4.988v-10.131c0-7.88-8.922-7.593-11.018-3.714v-2.155z" />
             </svg>
         </a>
+
+        {/* <!-- Github --> */}
+        <a href="https://github.com/maxterjunior" target='_blank' rel='noreferrer'>
+            <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-5 w-5"
+                fill="currentColor"
+                viewBox="0 0 24 24">
+                <path
+                    d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
+            </svg>
+        </a>
+        <YapeButton />
     </div>
 }
 
@@ -196,35 +248,35 @@ const ButtonPrint = () => {
         const data = tabs.value[indexTab.value]?.values;
 
         const html = `
-          <html>
-          <head>
-            <title>Impresión de Qrs</title>
-            <meta charset="utf-8">
-            <style>
-              .qr {
-                display: inline-block;
-                margin: 10px;
-                text-align: center;
+            <html>
+                <head>
+                    <title>Impresión de Qrs</title>
+                    <meta charset="utf-8">
+                        <style>
+                            .qr {
+                                display: inline-block;
+                            margin: 10px;
+                            text-align: center;
               }
-              .qr img {
-                width: 200px;
-                height: 200px;
+                            .qr img {
+                                width: 200px;
+                            height: 200px;
               }
-              .qr p {
-                margin: 0;
-                font-size: 24px;
-                font-family: sans-serif;
-                font-weight: bold;
-                white-space: nowrap;
+                            .qr p {
+                                margin: 0;
+                            font-size: 24px;
+                            font-family: sans-serif;
+                            font-weight: bold;
+                            white-space: nowrap;
               }
-            </style>
+                        </style>
 
-          </head>
-            <body onload="window.print();">
-            ${data.map((v) => `<div class="qr"><img src="https://chart.googleapis.com/chart?chs=200x200&cht=qr&chl=${v}&choe=UTF-8" ></img><p>${v}</p></div>`).join(" ")}
-            </body>
-          </html>
-          `
+                </head>
+                <body onload="window.print();">
+                    ${data.map((v) => `<div class="qr"><img src="https://chart.googleapis.com/chart?chs=200x200&cht=qr&chl=${v}&choe=UTF-8" ></img><p>${v}</p></div>`).join(" ")}
+                </body>
+            </html>
+            `
 
         const win = window.open("", "print", "width=1000,height=600");
         win!.document.write(html);
