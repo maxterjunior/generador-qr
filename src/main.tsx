@@ -41,13 +41,23 @@ const selectTab = (index: number) => {
 
 
 const HeaderTab = () => {
+
+    const scrollRef = useRef<any>(null);
+
+    const handler = () => {
+        addTab()
+        setTimeout(() => {
+            scrollRef.current.scrollLeft = scrollRef?.current?.scrollWidth;
+        }, 1)
+    }
+
     return <div class="header-container dark:bg-[#242424]">
         <div class="space-y-5">
-            <div class="border-b border-b-gray-200 overflow-y-hidden dark:border-[#242424]">
-                <ul class="-mb-px flex items-center gap-4 text-sm font-medium overflow-x-auto">
+            <div class="border-b border-b-gray-200 overflow-y-hidden dark:border-[#242424] overflow-x-auto mr-10" ref={scrollRef}>
+                <ul class="-mb-px flex items-center gap-4 text-sm font-medium">
                     {
                         tabs.value.map((_, i) =>
-                            <li class="flex-1 min-w-[250px] w-full">
+                            <li class="flex-1 min-w-[250px] max-w-[450px]">
                                 <span
                                     className={`cursor-pointer relative w-full text-center flex items-center justify-center gap-2 px-1 py-1 after:absolute after:left-0 after:bottom-0 after:h-0.5 after:w-full ${indexTab.value === i ? 'text-blue-700 dark:text-blue-500 after:bg-blue-700 hover:text-blue-700 font-bold' : 'hover:after:bg-blue-400  dark:text-white'}`}
                                     onClick={() => selectTab(i)}
@@ -62,6 +72,7 @@ const HeaderTab = () => {
                                                 tabs.value = [...tabs.value]
                                             }
                                         }}
+                                        className={`w-full`}
                                     />
 
                                     <button onClick={() => deleteTab(i)} type="button" class="bg-white rounded-md p-2 inline-flex items-center justify-center text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500 dark:bg-[#242424]">
@@ -74,7 +85,7 @@ const HeaderTab = () => {
                             </li>
                         )
                     }
-                    <button onClick={addTab} type="button" class="bg-white rounded-md p-2 inline-flex items-center justify-center text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500 dark:bg-[#242424]">
+                    <button onClick={handler} type="button" class="absolute right-0 bg-white rounded-md p-2 inline-flex items-center justify-center text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500 dark:bg-[#242424]">
                         <span class="sr-only">Add Tab</span>
                         <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
