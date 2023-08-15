@@ -47,11 +47,12 @@ const Editable = ({
                         onChange={e => {
                             const value = e?.target!['value']
                             if (value) {
-                                console.log('send', value)
+                                // console.log('send', value)
                                 onChange(value)
                             }
                         }}
                         onBlur={() => setEditing(false)}
+                        className={`rounded-lg border border-gray-300 p-2 w-full`}
                     />
                 </div>
             ) : (

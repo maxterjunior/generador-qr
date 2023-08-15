@@ -10,6 +10,7 @@ interface Tab {
     name: string;
     input: string;
     values: string[];
+    show: boolean;
 }
 
 const cacheIndexKey = 'index-tab';
@@ -20,7 +21,8 @@ const indexTab = signal(-1);
 const tabs = signal<Tab[]>([]);
 
 const addTab = () => {
-    tabs.value = [...tabs.value, { name: `Tab ${tabs.value.length + 1}`, input: '', values: [] }];
+    const tab: Tab = { name: `Tab ${tabs.value.length + 1}`, input: '', values: [], show: true }
+    tabs.value = [...tabs.value, tab];
     indexTab.value = tabs.value.length - 1;
 }
 
@@ -45,9 +47,9 @@ const HeaderTab = () => {
                 <ul class="-mb-px flex items-center gap-4 text-sm font-medium overflow-x-auto">
                     {
                         tabs.value.map((_, i) =>
-                            <li class="flex-1 max-w-xs min-w-[100px] ">
+                            <li class="flex-1 min-w-[250px] w-full">
                                 <span
-                                    className={`cursor-pointer relative flex items-center justify-center gap-2 px-1 py-1 after:absolute after:left-0 after:bottom-0 after:h-0.5 after:w-full ${indexTab.value === i ? 'text-blue-700 dark:text-blue-500 after:bg-blue-700 hover:text-blue-700 font-bold' : 'hover:after:bg-blue-400  dark:text-white'}`}
+                                    className={`cursor-pointer relative w-full text-center flex items-center justify-center gap-2 px-1 py-1 after:absolute after:left-0 after:bottom-0 after:h-0.5 after:w-full ${indexTab.value === i ? 'text-blue-700 dark:text-blue-500 after:bg-blue-700 hover:text-blue-700 font-bold' : 'hover:after:bg-blue-400  dark:text-white'}`}
                                     onClick={() => selectTab(i)}
                                 >
                                     <Editable
@@ -310,6 +312,7 @@ const App = () => {
         try {
             const cache = JSON.parse(localStorage.getItem(cacheTabsKey) || '[]');
             if (cache.length) {
+                for (const tab of cache) tab.show ??= true;
                 tabs.value = cache;
             } else {
                 addTab();

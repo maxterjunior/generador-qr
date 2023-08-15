@@ -3,6 +3,11 @@
 @tailwind utilities;
 
 
+body {
+    overflow-x: hidden !important;
+}
+
+
 /* Scroll */
 /* Firefox */
 * {
