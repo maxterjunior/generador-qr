@@ -54,7 +54,7 @@ const HeaderTab = () => {
     return <div class="header-container dark:bg-[#242424]">
         <div class="space-y-5">
             <div class="border-b border-b-gray-200 overflow-y-hidden dark:border-[#242424] overflow-x-auto mr-10" ref={scrollRef}>
-                <ul class="-mb-px flex items-center gap-4 text-sm font-medium">
+                <ul class="-mb-px flex items-center gap-4 text-sm font-medium min-h-[50px]">
                     {
                         tabs.value.map((_, i) =>
                             <li class="flex-1 min-w-[250px] max-w-[450px]">
