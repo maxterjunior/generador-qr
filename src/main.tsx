@@ -124,6 +124,23 @@ const TextArea = () => {
         ref?.current?.focus();
     }, [])
 
+    const [typeSplit, setTypeSplit] = useState(localStorage.getItem('typeSplit') === 'true' ? true : false); // false = \t\n, true = \n
+
+    useEffect(() => {
+        const listener = (e) => {
+            
+            setTypeSplit(e.detail);
+            // Reasignar valores
+            for (const tab of tabs.value) {
+                tab.values = tab.input.split(e.detail ? '\n' : /\s/).filter((v: string) => v).map((v: string) => v.trim());
+            }
+
+            tabs.value = [...tabs.value];
+        }
+        document.addEventListener('changeSplit', listener);
+        return () => document.removeEventListener('changeSplit', listener);
+    }, [])
+
     return <div class="flex justify-center m-10">
         <textarea
             ref={ref}
@@ -132,7 +149,7 @@ const TextArea = () => {
             value={tabs.value[indexTab.value]?.input}
             onInput={(e) => {
                 tabs.value[indexTab.value]!.input = (e.target as HTMLTextAreaElement).value;
-                tabs.value[indexTab.value]!.values = (e.target as HTMLTextAreaElement).value.split(/\s/g).filter((v: string) => v);
+                tabs.value[indexTab.value]!.values = (e.target as HTMLTextAreaElement).value.split(typeSplit ? '\n' : /\s/).filter((v: string) => v).map((v: string) => v.trim());
                 tabs.value = [...tabs.value];
                 resizeTextarea();
             }}
@@ -254,7 +271,7 @@ const Footer = () => {
     </div>
 }
 
-const ButtonPrint = () => {
+const ButtonsAccion = () => {
 
     const print = () => {
 
@@ -296,7 +313,28 @@ const ButtonPrint = () => {
         win!.document.close();
     }
 
-    return <div class="fixed bottom-0 right-0 p-2 z-10">
+    const [typeSplit, setTypeSplit] = useState(localStorage.getItem('typeSplit') === 'true' ? true : false); // false = \t\n, true = \n
+
+    useEffect(() => {
+        localStorage.setItem('typeSplit', typeSplit.toString());
+        // Generate event change
+        const event = new CustomEvent('changeSplit', { detail: typeSplit });
+        document.dispatchEvent(event);
+    }, [typeSplit])
+
+
+    return <div class="fixed bottom-0 right-0 p-2 z-10 flex">
+
+        <div class="relative inline-flex items-center gap-2 mr-5">
+            {/* <label class="text-orange-500 font-bold">\t \n</label> */}
+            <label class="text-red-500 font-bold">/\s/</label>
+            <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" checked={typeSplit} class="sr-only peer" onChange={() => setTypeSplit(!typeSplit)} />
+                <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+            </label>
+            <label class="text-orange-500 font-bold">\n</label>
+        </div>
+
         <button onClick={print} class="bg-white dark:bg-[#242424] dark:hover:bg-[#3a3a3a] rounded-md p-2 inline-flex items-center justify-center text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500">
             <span class="sr-only">Print</span>
             <svg class="h-6 w-6" fill="currentColor" stroke="currentColor" version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" enable-background="new 0 0 64 64" >
@@ -346,7 +384,7 @@ const App = () => {
         <TabContent />
         <FloatSocialNetwork />
         <Footer />
-        <ButtonPrint />
+        <ButtonsAccion />
     </div>
 }
 
