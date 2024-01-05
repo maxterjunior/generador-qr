@@ -19,6 +19,7 @@ const cacheTabsKey = 'tabs-qr';
 const indexTab = signal(-1);
 
 const tabs = signal<Tab[]>([]);
+const enableHoverSignal = signal(false);
 
 const addTab = () => {
     const tab: Tab = { name: `Tab ${tabs.value.length + 1}`, input: '', values: [], show: true }
@@ -128,7 +129,7 @@ const TextArea = () => {
 
     useEffect(() => {
         const listener = (e) => {
-            
+
             setTypeSplit(e.detail);
             // Reasignar valores
             for (const tab of tabs.value) {
@@ -137,8 +138,8 @@ const TextArea = () => {
 
             tabs.value = [...tabs.value];
         }
-        document.addEventListener('changeSplit', listener);
-        return () => document.removeEventListener('changeSplit', listener);
+        document.addEventListener('renderQrs', listener);
+        return () => document.removeEventListener('renderQrs', listener);
     }, [])
 
     return <div class="flex justify-center m-10">
@@ -169,12 +170,16 @@ const QRCode = ({ value, size }: { value: string, size: number }) => {
 
 const TabContent = () => {
     // Generar QRs with values
+    let classQr = 'flex flex-col items-center gap-2'
+    if (enableHoverSignal.value) { 
+        classQr += ' hover:border-gray-900/10 hover:bg-gray-900/10 hover:!opacity-100 group-hover:opacity-5 transition-opacity transform hover:scale-110 duration-300'
+    }
     return <div class="flex-1 flex flex-col dark:bg-[#242424]">
         <div class="flex-1 relative">
-            <div class="flex flex-wrap gap-20 p-2 mb-10 justify-center">
+            <div class="flex flex-wrap gap-20 p-2 mb-10 justify-center group">
                 {
                     tabs.value[indexTab.value]?.values.map((v, i) =>
-                        <div key={i} class="flex flex-col items-center gap-2">
+                        <div key={i} class={classQr}>
                             <QRCode value={v} size={200} />
                             <span class="text-base dark:text-white">{v}</span>
                         </div>
@@ -208,7 +213,7 @@ const YapeButton = () => {
 
     return (
         <>
-            <div onClick={() => setShow(!show)} >
+            <div onClick={() => setShow(!show)} class="cursor-pointer">
                 {logoYape ?
                     <img src='/generador-qr/yape.png' class="h-5" /> :
                     <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -314,16 +319,34 @@ const ButtonsAccion = () => {
     }
 
     const [typeSplit, setTypeSplit] = useState(localStorage.getItem('typeSplit') === 'true' ? true : false); // false = \t\n, true = \n
+    const [enableHover, setEnableHover] = useState(localStorage.getItem('enableHover') === 'true' ? true : false); // false = \t\n, true = \n
 
     useEffect(() => {
         localStorage.setItem('typeSplit', typeSplit.toString());
         // Generate event change
-        const event = new CustomEvent('changeSplit', { detail: typeSplit });
+        const event = new CustomEvent('renderQrs', { detail: typeSplit });
         document.dispatchEvent(event);
     }, [typeSplit])
 
+    useEffect(() => {
+        localStorage.setItem('enableHover', enableHover.toString());
+        // Generate event change
+        const event = new CustomEvent('renderQrs', { detail: typeSplit });
+        document.dispatchEvent(event);
+        enableHoverSignal.value = enableHover;
+    }, [enableHover])
+
 
     return <div class="fixed bottom-0 right-0 p-2 z-10 flex">
+
+        <div class="relative inline-flex items-center gap-2 mr-5">
+            {/* <label class="text-orange-500 font-bold">\t \n</label> */}
+            <label class="text-blue-500 font-bold">Hover</label>
+            <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" checked={enableHover} class="sr-only peer" onChange={() => setEnableHover(!enableHover)} />
+                <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+            </label>
+        </div>
 
         <div class="relative inline-flex items-center gap-2 mr-5">
             {/* <label class="text-orange-500 font-bold">\t \n</label> */}
