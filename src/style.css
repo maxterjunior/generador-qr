@@ -169,7 +169,7 @@ canvas {
 /* Firefox */
 * {
   scrollbar-width: thin;
-  scrollbar-color: #99A0A1 #fff;
+  scrollbar-color: #99a0a1 #fff;
 }
 
 /* Chrome, Edge and Safari */
@@ -193,13 +193,51 @@ canvas {
 
 *::-webkit-scrollbar-thumb {
   border-radius: 5px;
-  background-color: #99A0A1;
+  background-color: #99a0a1;
 }
 
 *::-webkit-scrollbar-thumb:hover {
-  background-color: #878D8E;
+  background-color: #878d8e;
 }
 
 *::-webkit-scrollbar-thumb:active {
-  background-color: #99A0A1;
+  background-color: #99a0a1;
+}
+
+// Banner QR
+.award-ribbon {
+  height: 35px;
+  width: 180px;
+  background-color: #49c2d7;
+  position: absolute;
+  top: 48px;
+  right: -6px;
+  text-align: center;
+  color: #fff;
+  font-weight: 600;
+  font-size: 15px;
+  white-space: nowrap;
+  -webkit-transform: rotate(35deg);
+  -moz-transform: rotate(35deg);
+  -ms-transform: rotate(35deg);
+  -o-transform: rotate(35deg);
+  transform: rotate(35deg);
+}
+
+.award-ribbon:before {
+  box-sizing: border-box;
+  border-style: solid;
+  border-color: transparent;
+  border-width: 37px;
+  border-left-width: 53px;
+  border-right-width: 26px;
+  content: "";
+  display: block;
+  left: -49px;
+  position: absolute;
+  width: 141%;
+  border-top-width: 0px;
+  border-bottom-color: #49c2d7;
+  top: -2px;
+  z-index: -1;
 }

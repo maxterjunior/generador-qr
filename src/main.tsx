@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import QR from "qrcode";
 import Editable from "./components/editable";
 import "./index.css";
+import { useLocalStorage } from "./hooks/localstorage";
 
 // Migra a preact
 interface Tab {
@@ -15,11 +16,13 @@ interface Tab {
 
 const cacheIndexKey = 'index-tab';
 const cacheTabsKey = 'tabs-qr';
+const cacheSelectedKey = 'qrs-selected';
 
 const indexTab = signal(-1);
 
 const tabs = signal<Tab[]>([]);
 const enableHoverSignal = signal(false);
+const selectedQrs = signal<Set<string>>(new Set(JSON.parse(localStorage.getItem(cacheSelectedKey) || '[]')));
 
 const addTab = () => {
     const tab: Tab = { name: `Tab ${tabs.value.length + 1}`, input: '', values: [], show: true }
@@ -171,16 +174,36 @@ const QRCode = ({ value, size }: { value: string, size: number }) => {
 const TabContent = () => {
     // Generar QRs with values
     let classQr = 'flex flex-col items-center gap-2'
-    if (enableHoverSignal.value) { 
+    if (enableHoverSignal.value) {
         classQr += ' hover:border-gray-900/10 hover:bg-gray-900/10 hover:!opacity-100 group-hover:opacity-5 transition-opacity transform hover:scale-110 duration-300'
     }
+
+    const selectQr = (v: string) => {
+        if (selectedQrs.value.has(v)) {
+            selectedQrs.value.delete(v);
+        } else {
+            selectedQrs.value.add(v);
+        }
+        selectedQrs.value = new Set(selectedQrs.value);
+        localStorage.setItem(cacheSelectedKey, JSON.stringify(Array.from(selectedQrs.value)));
+    }
+
     return <div class="flex-1 flex flex-col dark:bg-[#242424]">
         <div class="flex-1 relative">
             <div class="flex flex-wrap gap-20 p-2 mb-10 justify-center group">
                 {
                     tabs.value[indexTab.value]?.values.map((v, i) =>
                         <div key={i} class={classQr}>
-                            <QRCode value={v} size={200} />
+                            <div onClick={() => selectQr(v)} class='relative cursor-pointer flex justify-center items-center transition-all duration-300 active:scale-95 hover:scale-105'>
+                                <QRCode value={v} size={200} />
+                                {/* banner */}
+                                {selectedQrs.value.has(v) ?
+                                    <div class="absolute flex justify-center items-center bg-orange-600 bg-opacity-50 w-full h-full top-0 left-0 rounded-[24px] transition-all duration-300" >
+                                        <div class="absolute w-[150px] h-[15px] rounded-full -rotate-45 bg-orange-600"></div>
+                                        <div class="absolute w-[150px] h-[15px] rounded-full rotate-45 bg-orange-600"></div>
+                                    </div>
+                                    : null}
+                            </div>
                             <span class="text-base dark:text-white">{v}</span>
                         </div>
                     )
@@ -318,29 +341,42 @@ const ButtonsAccion = () => {
         win!.document.close();
     }
 
-    const [typeSplit, setTypeSplit] = useState(localStorage.getItem('typeSplit') === 'true' ? true : false); // false = \t\n, true = \n
-    const [enableHover, setEnableHover] = useState(localStorage.getItem('enableHover') === 'true' ? true : false); // false = \t\n, true = \n
+    const [typeSplit, setTypeSplit] = useLocalStorage('typeSplit', false);
+    const [enableHover, setEnableHover] = useLocalStorage('enableHover', false);
 
     useEffect(() => {
-        localStorage.setItem('typeSplit', typeSplit.toString());
         // Generate event change
         const event = new CustomEvent('renderQrs', { detail: typeSplit });
         document.dispatchEvent(event);
     }, [typeSplit])
 
     useEffect(() => {
-        localStorage.setItem('enableHover', enableHover.toString());
         // Generate event change
         const event = new CustomEvent('renderQrs', { detail: typeSplit });
         document.dispatchEvent(event);
         enableHoverSignal.value = enableHover;
     }, [enableHover])
 
+    const clearSelection = () => {
+        selectedQrs.value = new Set();
+        localStorage.setItem(cacheSelectedKey, '[]');
+    }
+
 
     return <div class="fixed bottom-0 right-0 p-2 z-10 flex">
 
+        {/* Button clear */}
         <div class="relative inline-flex items-center gap-2 mr-5">
-            {/* <label class="text-orange-500 font-bold">\t \n</label> */}
+            <button onClick={clearSelection} class="bg-white dark:bg-[#242424] dark:hover:bg-[#3a3a3a] rounded-md p-2 inline-flex items-center justify-center text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500">
+                <span class="">Selected</span>
+                <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+
+
+        <div class="relative inline-flex items-center gap-2 mr-5">
             <label class="text-blue-500 font-bold">Hover</label>
             <label class="relative inline-flex items-center cursor-pointer">
                 <input type="checkbox" checked={enableHover} class="sr-only peer" onChange={() => setEnableHover(!enableHover)} />
@@ -349,7 +385,6 @@ const ButtonsAccion = () => {
         </div>
 
         <div class="relative inline-flex items-center gap-2 mr-5">
-            {/* <label class="text-orange-500 font-bold">\t \n</label> */}
             <label class="text-red-500 font-bold">/\s/</label>
             <label class="relative inline-flex items-center cursor-pointer">
                 <input type="checkbox" checked={typeSplit} class="sr-only peer" onChange={() => setTypeSplit(!typeSplit)} />
