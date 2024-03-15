@@ -358,8 +358,13 @@ const ButtonsAccion = () => {
     }, [enableHover])
 
     const clearSelection = () => {
-        selectedQrs.value = new Set();
-        localStorage.setItem(cacheSelectedKey, '[]');
+        if (selectedQrs.value.size) {
+            selectedQrs.value = new Set();
+            localStorage.setItem(cacheSelectedKey, '[]');
+        } else {
+            selectedQrs.value = new Set(tabs.value[indexTab.value]?.values);
+            localStorage.setItem(cacheSelectedKey, JSON.stringify(Array.from(selectedQrs.value)));
+        }
     }
 
 
