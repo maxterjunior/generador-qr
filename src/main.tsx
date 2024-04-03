@@ -301,9 +301,13 @@ const Footer = () => {
 
 const ButtonsAccion = () => {
 
-    const print = () => {
+    const print = async () => {
 
         const data = tabs.value[indexTab.value]?.values;
+
+        const imgs = await Promise.all(data.map(e => QR.toDataURL(e, { width: 200 })))
+
+        console.log(imgs);
 
         const html = `
             <html>
@@ -331,10 +335,11 @@ const ButtonsAccion = () => {
 
                 </head>
                 <body onload="window.print();">
-                    ${data.map((v) => `<div class="qr"><img src="https://chart.googleapis.com/chart?chs=200x200&cht=qr&chl=${v}&choe=UTF-8" ></img><p>${v}</p></div>`).join(" ")}
+                    ${imgs.map((v, i) => `<div class="qr"><img src="${v}" ></img><p>${data[i]}</p></div>`).join(" ")}
                 </body>
-            </html>
-            `
+                </html>
+                `
+        // ${data.map((v) => `<div class="qr"><img src="https://chart.googleapis.com/chart?chs=200x200&cht=qr&chl=${v}&choe=UTF-8" ></img><p>${v}</p></div>`).join(" ")}
 
         const win = window.open("", "print", "width=1000,height=600");
         win!.document.write(html);
