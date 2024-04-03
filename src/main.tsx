@@ -307,8 +307,6 @@ const ButtonsAccion = () => {
 
         const imgs = await Promise.all(data.map(e => QR.toDataURL(e, { width: 200 })))
 
-        console.log(imgs);
-
         const html = `
             <html>
                 <head>
