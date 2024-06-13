@@ -15,12 +15,12 @@ export const useAlertFloat = () => {
         setAlert(null);
     }
 
-    const containerStyle = {
-        position: 'fixed',
-        top: '10px',
-        right: '10px',
-        zIndex: 9999
-    }
+    // const containerStyle = {
+    //     position: 'fixed',
+    //     top: '10px',
+    //     right: '10px',
+    //     zIndex: 9999
+    // }
 
     const alertComponent = alert ? (
         <div className={`alert alert-${alert.type}`} role="alert">
