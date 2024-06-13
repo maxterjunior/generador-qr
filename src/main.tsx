@@ -393,7 +393,9 @@ const ButtonsAccion = () => {
     }
 
     const readQr = () => {
-        const input = document.getElementById('file-image') as HTMLInputElement;
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
         input.click();
         input.onchange = async () => {
             const file = input.files?.[0];
@@ -427,7 +429,6 @@ const ButtonsAccion = () => {
 
         {/* Button read qr */}
         <div class="relative inline-flex items-center gap-2 mr-5">
-            <input type="file" id="file-image" accept="image/*" class="hidden" />
             <button onClick={readQr} class="bg-white dark:bg-[#242424] dark:hover:bg-[#3a3a3a] rounded-md p-2 inline-flex items-center justify-center text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500">
                 <span class="mr-2">Read</span>
                 <QrIcon />
