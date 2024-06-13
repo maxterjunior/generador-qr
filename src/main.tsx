@@ -3,14 +3,19 @@ import { render } from "preact";
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import QR from "qrcode";
 import Editable from "./components/editable";
-import "./index.css";
+import { QrIcon } from "./components/icons/qr";
 import { useLocalStorage } from "./hooks/localstorage";
+import "./index.css";
+import QrScanner from "qr-scanner";
+import { Confirm } from "./components/Confirm.component";
+
 
 // Migra a preact
 interface Tab {
     name: string;
     input: string;
     values: string[];
+    date: string;
     show: boolean;
 }
 
@@ -25,7 +30,7 @@ const enableHoverSignal = signal(false);
 const selectedQrs = signal<Set<string>>(new Set(JSON.parse(localStorage.getItem(cacheSelectedKey) || '[]')));
 
 const addTab = () => {
-    const tab: Tab = { name: `Tab ${tabs.value.length + 1}`, input: '', values: [], show: true }
+    const tab: Tab = { name: `Tab ${tabs.value.length + 1}`, input: '', values: [], show: true, date: new Date().toString() }
     tabs.value = [...tabs.value, tab];
     indexTab.value = tabs.value.length - 1;
 }
@@ -48,6 +53,7 @@ const HeaderTab = () => {
 
     const scrollRef = useRef<any>(null);
 
+
     const handler = () => {
         addTab()
         setTimeout(() => {
@@ -55,50 +61,66 @@ const HeaderTab = () => {
         }, 1)
     }
 
-    return <div class="header-container dark:bg-[#242424]">
-        <div class="space-y-5">
-            <div class="border-b border-b-gray-200 overflow-y-hidden dark:border-[#242424] overflow-x-auto mr-10" ref={scrollRef}>
-                <ul class="-mb-px flex items-center gap-4 text-sm font-medium min-h-[50px]">
-                    {
-                        tabs.value.map((_, i) =>
-                            <li class="flex-1 min-w-[250px] max-w-[450px]">
-                                <span
-                                    className={`cursor-pointer relative w-full text-center flex items-center justify-center gap-2 px-1 py-1 after:absolute after:left-0 after:bottom-0 after:h-0.5 after:w-full ${indexTab.value === i ? 'text-blue-700 dark:text-blue-500 after:bg-blue-700 hover:text-blue-700 font-bold' : 'hover:after:bg-blue-400  dark:text-white'}`}
-                                    onClick={() => selectTab(i)}
-                                >
-                                    <Editable
-                                        text={tabs.value[i].name}
-                                        placeholder="Nombre de la pestaña"
-                                        type="input"
-                                        onChange={(value) => {
-                                            if (value) {
-                                                tabs.value[i].name = value
-                                                tabs.value = [...tabs.value]
-                                            }
-                                        }}
-                                        className={`w-full`}
-                                    />
+    const [confirm, setConfirm] = useState(false);
+    const [selected, setSelected] = useState<{ i: number, name: string }>();
 
-                                    <button onClick={() => deleteTab(i)} type="button" class="bg-white rounded-md p-2 inline-flex items-center justify-center text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500 dark:bg-[#242424]">
-                                        <span class="sr-only">Close menu</span>
-                                        <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                                        </svg>
-                                    </button>
-                                </span>
-                            </li>
-                        )
-                    }
-                    <button onClick={handler} type="button" class="absolute right-0 bg-white rounded-md p-2 inline-flex items-center justify-center text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500 dark:bg-[#242424]">
-                        <span class="sr-only">Add Tab</span>
-                        <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                        </svg>
-                    </button>
-                </ul>
+    const confirmDeleteTab = (tab: Tab, i: number) => {
+        setSelected({ i, name: tab.name });
+        setConfirm(true);
+    }
+
+    return <>
+        <Confirm
+            message={selected?.name || ''}
+            onConfirm={() => deleteTab(selected?.i || 0)}
+            open={confirm}
+            setOpen={setConfirm}
+        />
+        <div class="header-container dark:bg-[#242424]">
+            <div class="space-y-5">
+                <div class="border-b border-b-gray-200 overflow-y-hidden dark:border-[#242424] overflow-x-auto mr-10" ref={scrollRef}>
+                    <ul class="-mb-px flex items-center gap-4 text-sm font-medium min-h-[50px]">
+                        {
+                            tabs.value.map((t, i) =>
+                                <li class="flex-1 min-w-[250px] max-w-[450px]">
+                                    <span
+                                        className={`cursor-pointer relative w-full text-center flex items-center justify-center gap-2 px-1 py-1 after:absolute after:left-0 after:bottom-0 after:h-0.5 after:w-full ${indexTab.value === i ? 'text-blue-700 dark:text-blue-500 after:bg-blue-700 hover:text-blue-700 font-bold' : 'hover:after:bg-blue-400  dark:text-white'}`}
+                                        onClick={() => selectTab(i)}
+                                    >
+                                        <Editable
+                                            text={tabs.value[i].name}
+                                            placeholder="Nombre de la pestaña"
+                                            type="input"
+                                            onChange={(value) => {
+                                                if (value) {
+                                                    tabs.value[i].name = value
+                                                    tabs.value = [...tabs.value]
+                                                }
+                                            }}
+                                            className={`w-full`}
+                                        />
+
+                                        <button onClick={() => confirmDeleteTab(t, i)} type="button" class="bg-white rounded-md p-2 inline-flex items-center justify-center text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500 dark:bg-[#242424]">
+                                            <span class="sr-only">Close menu</span>
+                                            <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                            </svg>
+                                        </button>
+                                    </span>
+                                </li>
+                            )
+                        }
+                        <button onClick={handler} type="button" class="absolute right-0 bg-white rounded-md p-2 inline-flex items-center justify-center text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500 dark:bg-[#242424]">
+                            <span class="sr-only">Add Tab</span>
+                            <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                            </svg>
+                        </button>
+                    </ul>
+                </div>
             </div>
         </div>
-    </div>
+    </>
 }
 
 const TextArea = () => {
@@ -370,8 +392,49 @@ const ButtonsAccion = () => {
         }
     }
 
+    const readQr = () => {
+        const input = document.getElementById('file-image') as HTMLInputElement;
+        input.click();
+        input.onchange = async () => {
+            const file = input.files?.[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = async (e) => {
+                    const img = new Image();
+                    img.src = e.target?.result as string;
+                    img.onload = async () => {
+                        try {
+                            const code = await QrScanner.scanImage(img)
+                            if (code) {
+                                tabs.value[indexTab.value].input = tabs.value[indexTab.value].input + '\n' + code;
+                                tabs.value[indexTab.value].values = tabs.value[indexTab.value].input.split(typeSplit ? '\n' : /\s/).filter((v: string) => v).map((v: string) => v.trim());
+                                tabs.value = [...tabs.value];
+                            }
+                        } catch (error) {
+                            console.error(error);
+                            console.log('No se pudo leer el código QR');
+
+                        }
+                    }
+                }
+                reader.readAsDataURL(file);
+            }
+        }
+    }
+
 
     return <div class="fixed bottom-0 right-0 p-2 z-10 flex">
+
+        {/* Button read qr */}
+        <div class="relative inline-flex items-center gap-2 mr-5">
+            <input type="file" id="file-image" accept="image/*" class="hidden" />
+            <button onClick={readQr} class="bg-white dark:bg-[#242424] dark:hover:bg-[#3a3a3a] rounded-md p-2 inline-flex items-center justify-center text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500">
+                <span class="mr-2">Read</span>
+                <QrIcon />
+            </button>
+
+        </div>
+
 
         {/* Button clear */}
         <div class="relative inline-flex items-center gap-2 mr-5">
