@@ -246,17 +246,23 @@ const TabContent = () => {
                                 {
                                     selectedQrs.value.has(v) ?
                                         <div class="absolute flex justify-center items-center bg-orange-600 bg-opacity-50 w-full h-full top-0 left-0 rounded-[24px] transition-all duration-300" >
-                                            <div class="absolute w-[150px] h-[15px] rounded-full -rotate-45 bg-orange-600"></div>
-                                            <div class="absolute w-[150px] h-[15px] rounded-full rotate-45 bg-orange-600"></div>
+                                            <div class="absolute flex justify-center items-center w-full h-full hover:opacity-0">
+                                                <div class="absolute w-[150px] h-[15px] rounded-full -rotate-45 bg-orange-600 hover:hidden"></div>
+                                                <div class="absolute w-[150px] h-[15px] rounded-full rotate-45 bg-orange-600 hover:hidden"></div>
+                                            </div>
                                         </div>
                                         : null
                                 }
                                 {
                                     enableDualCheckSignal.value && selectedQrsAlter.value.has(v) ?
+
                                         <div class="absolute flex justify-center items-center bg-blue-600 bg-opacity-50 w-full h-full top-0 left-0 rounded-[24px] transition-all duration-300" >
-                                            <div class="absolute w-[150px] h-[15px] rounded-full -rotate-45 bg-blue-600"></div>
-                                            <div class="absolute w-[150px] h-[15px] rounded-full rotate-45 bg-blue-600"></div>
+                                            <div class="absolute flex justify-center items-center w-full h-full hover:opacity-0">
+                                                <div class="absolute w-[150px] h-[15px] rounded-full -rotate-45 bg-blue-600"></div>
+                                                <div class="absolute w-[150px] h-[15px] rounded-full rotate-45 bg-blue-600" ></div>
+                                            </div>
                                         </div>
+
                                         : null
                                 }
                             </div>
@@ -544,7 +550,7 @@ const ButtonsAccion = () => {
 
 const Footer = () => {
     return <footer
-        class="flex items-center justify-between z-10 px-3 py-1 flex-row"
+        class="flex items-center justify-between z-10 px-3 py-1 flex-row fixed bottom-0 w-full"
     >
         <FloatSocialNetwork />
         <ButtonsAccion />
