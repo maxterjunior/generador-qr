@@ -22,12 +22,16 @@ interface Tab {
 const cacheIndexKey = 'index-tab';
 const cacheTabsKey = 'tabs-qr';
 const cacheSelectedKey = 'qrs-selected';
+const cacheSelectedKeyAlter = 'qrs-selected-alter';
 
 const indexTab = signal(-1);
 
 const tabs = signal<Tab[]>([]);
 const enableHoverSignal = signal(false);
+const enableDualCheckSignal = signal(false);
+
 const selectedQrs = signal<Set<string>>(new Set(JSON.parse(localStorage.getItem(cacheSelectedKey) || '[]')));
+const selectedQrsAlter = signal<Set<string>>(new Set(JSON.parse(localStorage.getItem(cacheSelectedKeyAlter) || '[]')));
 
 const addTab = () => {
     const tab: Tab = { name: `Tab ${tabs.value.length + 1}`, input: '', values: [], show: true, date: new Date().toString() }
@@ -201,13 +205,31 @@ const TabContent = () => {
     }
 
     const selectQr = (v: string) => {
-        if (selectedQrs.value.has(v)) {
-            selectedQrs.value.delete(v);
+
+        if (enableDualCheckSignal.value) {
+
+            if (!selectedQrs.value.has(v) && !selectedQrsAlter.value.has(v)) {
+                selectedQrs.value.add(v);
+            } else if (selectedQrs.value.has(v)) {
+                selectedQrs.value.delete(v);
+                selectedQrsAlter.value.add(v);
+            } else if (selectedQrsAlter.value.has(v)) {
+                selectedQrsAlter.value.delete(v);
+            }
         } else {
-            selectedQrs.value.add(v);
+            if (selectedQrs.value.has(v)) {
+                selectedQrs.value.delete(v);
+            } else {
+                selectedQrs.value.add(v);
+                selectedQrsAlter.value.delete(v);
+            }
         }
+
         selectedQrs.value = new Set(selectedQrs.value);
         localStorage.setItem(cacheSelectedKey, JSON.stringify(Array.from(selectedQrs.value)));
+
+        selectedQrsAlter.value = new Set(selectedQrsAlter.value);
+        localStorage.setItem(cacheSelectedKeyAlter, JSON.stringify(Array.from(selectedQrsAlter.value)));
     }
 
     return <div class="flex-1 flex flex-col dark:bg-[#242424]">
@@ -216,15 +238,27 @@ const TabContent = () => {
                 {
                     tabs.value[indexTab.value]?.values.map((v, i) =>
                         <div key={i} class={classQr}>
-                            <div onClick={() => selectQr(v)} class='relative cursor-pointer flex justify-center items-center transition-all duration-300 active:scale-95 hover:scale-105'>
+                            <div
+                                onClick={() => selectQr(v)}
+                                class='relative cursor-pointer flex justify-center items-center transition-all duration-300 active:scale-95 hover:scale-105'>
                                 <QRCode value={v} size={200} />
                                 {/* banner */}
-                                {selectedQrs.value.has(v) ?
-                                    <div class="absolute flex justify-center items-center bg-orange-600 bg-opacity-50 w-full h-full top-0 left-0 rounded-[24px] transition-all duration-300" >
-                                        <div class="absolute w-[150px] h-[15px] rounded-full -rotate-45 bg-orange-600"></div>
-                                        <div class="absolute w-[150px] h-[15px] rounded-full rotate-45 bg-orange-600"></div>
-                                    </div>
-                                    : null}
+                                {
+                                    selectedQrs.value.has(v) ?
+                                        <div class="absolute flex justify-center items-center bg-orange-600 bg-opacity-50 w-full h-full top-0 left-0 rounded-[24px] transition-all duration-300" >
+                                            <div class="absolute w-[150px] h-[15px] rounded-full -rotate-45 bg-orange-600"></div>
+                                            <div class="absolute w-[150px] h-[15px] rounded-full rotate-45 bg-orange-600"></div>
+                                        </div>
+                                        : null
+                                }
+                                {
+                                    enableDualCheckSignal.value && selectedQrsAlter.value.has(v) ?
+                                        <div class="absolute flex justify-center items-center bg-blue-600 bg-opacity-50 w-full h-full top-0 left-0 rounded-[24px] transition-all duration-300" >
+                                            <div class="absolute w-[150px] h-[15px] rounded-full -rotate-45 bg-blue-600"></div>
+                                            <div class="absolute w-[150px] h-[15px] rounded-full rotate-45 bg-blue-600"></div>
+                                        </div>
+                                        : null
+                                }
                             </div>
                             <span class="text-base dark:text-white">{v}</span>
                         </div>
@@ -368,6 +402,7 @@ const ButtonsAccion = () => {
 
     const [typeSplit, setTypeSplit] = useLocalStorage('typeSplit', false);
     const [enableHover, setEnableHover] = useLocalStorage('enableHover', false);
+    const [enableDualCheck, setEnableDualCheck] = useLocalStorage('enableDualCheck', false);
 
     useEffect(() => {
         // Generate event change
@@ -381,6 +416,14 @@ const ButtonsAccion = () => {
         document.dispatchEvent(event);
         enableHoverSignal.value = enableHover;
     }, [enableHover])
+
+    useEffect(() => {
+        // Generate event change
+        const event = new CustomEvent('renderQrs', { detail: typeSplit });
+        document.dispatchEvent(event);
+        enableDualCheckSignal.value = enableDualCheck;
+        console.log({ enableDualCheck })
+    }, [enableDualCheck])
 
     const clearSelection = () => {
         if (selectedQrs.value.size) {
@@ -426,6 +469,16 @@ const ButtonsAccion = () => {
 
 
     return <div class="fixed bottom-0 right-0 p-2 z-10 flex">
+
+        {/* Dual Check */}
+        <div class="relative inline-flex items-center gap-2 mr-5">
+            <label class="text-orange-500 font-bold">Check</label>
+            <label class="text-blue-500 font-bold">Dual</label>
+            <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" checked={enableDualCheck} class="sr-only peer" onChange={() => setEnableDualCheck(!enableDualCheck)} />
+                <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+            </label>
+        </div>
 
         {/* Button read qr */}
         <div class="relative inline-flex items-center gap-2 mr-5">
