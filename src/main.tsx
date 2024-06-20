@@ -431,6 +431,12 @@ const ButtonsAccion = () => {
             selectedQrs.value = new Set(tabs.value[indexTab.value]?.values);
             localStorage.setItem(cacheSelectedKey, JSON.stringify(Array.from(selectedQrs.value)));
         }
+
+        if (selectedQrsAlter.value.size) {
+            selectedQrsAlter.value = new Set();
+            localStorage.setItem(cacheSelectedKeyAlter, '[]');
+        }
+
     }
 
     const readQr = () => {
