@@ -93,12 +93,15 @@ const HeaderTab = () => {
                                     >
                                         <Editable
                                             text={tabs.value[i].name}
-                                            placeholder="Nombre de la pestaña"
-                                            type="input"
+                                            // placeholder="Nombre de la pestaña"
+                                            // type="input"
                                             onChange={(value) => {
+                                                console.log('send', value)
                                                 if (value) {
-                                                    tabs.value[i].name = value
-                                                    tabs.value = [...tabs.value]
+                                                    setTimeout(() => {
+                                                        tabs.value[i].name = value
+                                                        tabs.value = [...tabs.value]
+                                                    }, 100);
                                                 }
                                             }}
                                             className={`w-full`}
@@ -426,7 +429,6 @@ const ButtonsAccion = () => {
         const event = new CustomEvent('renderQrs', { detail: typeSplit });
         document.dispatchEvent(event);
         enableDualCheckSignal.value = enableDualCheck;
-        console.log({ enableDualCheck })
     }, [enableDualCheck])
 
     const clearSelection = () => {
