@@ -8,6 +8,7 @@ import { useLocalStorage } from "./hooks/localstorage";
 import "./index.css";
 import QrScanner from "qr-scanner";
 import { Confirm } from "./components/Confirm.component";
+import ZebraBrowserPrintWrapper from "zebra-browser-print-wrapper";
 
 
 // Migra a preact
@@ -479,6 +480,89 @@ const ButtonsAccion = () => {
         }
     }
 
+    const printZebra = async () => {
+        const qrs = tabs.value[indexTab.value]?.values;
+        console.log(qrs);
+
+        const arraySplit = (arr: string[], size: number) => arr.reduce((acc, e, i) => (i % size ? acc[acc.length - 1].push(e) : acc.push([e]), acc), [] as string[][]);
+        const trimText = (length: number, text: string) => text.length > length ? text.substring(0, length) : text;
+
+        // Define printer
+        const config = {
+            yAlign: 3.6,
+            xAlignBase: 1,
+            xAlignFactor: 26.1,
+            fontSize: '0,2',
+            qrSize: 0.7
+        }
+
+        let commands = '';
+
+        const filas = arraySplit(qrs, 4);
+
+
+        for (const [index, fila] of filas.entries()) {
+
+            commands += `^XA
+  ^MUM
+  ^${index === filas.length - 1 ? 'MMC' : 'MMT'}
+  ^PW1000
+  ^LL1218
+  ^LS0 
+  `;
+
+            for (const [index, qr] of fila.entries()) {
+
+                commands += `^FT${1.2 + config.xAlignBase + index * config.xAlignFactor},${config.yAlign + 21.7}
+              ^BQN,2,${config.qrSize}
+              ^FDLA,${qr}
+              ^FS
+              
+              ^FT${config.xAlignBase + index * config.xAlignFactor},${config.yAlign}
+              ^A0N,${config.fontSize}
+              ^FH\
+              ^FD${trimText(23, qr)}
+              ^FS 
+  `;
+
+            }
+
+            commands += `^PQ1,0,1,Y^XZ`;
+
+        }
+
+        console.log(commands);
+
+        const browserPrint = new ZebraBrowserPrintWrapper();
+
+        // List printers
+        const printers = await browserPrint.getAvailablePrinters();
+
+        // Validar que printers no sea un Error
+        if (printers instanceof Error) return alert(printers.message);
+
+        // Select default printer 
+        if (printers.length === 0) return alert('Could not find any printer');
+
+        const defaultPrinter = printers[0];
+
+        // Set the printer
+        browserPrint.setPrinter(defaultPrinter);
+
+        // Check printer status
+        const printerStatus = await browserPrint.checkPrinterStatus();
+
+        // Check if the printer is ready
+        if (printerStatus.isReadyToPrint) {
+            const zpl = commands;
+            browserPrint.print(zpl);
+        } else {
+            console.error("Error/s", printerStatus.errors);
+            alert('Print:' + printerStatus.errors);
+        }
+
+    }
+
 
     return <div class="flex">
 
@@ -529,6 +613,10 @@ const ButtonsAccion = () => {
             </label>
             <label class="text-orange-500 font-bold">\n</label>
         </div>
+
+        <button onClick={printZebra} class="bg-white dark:bg-[#242424] dark:hover:bg-[#3a3a3a] rounded-md p-2 inline-flex items-center justify-center text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500">
+            Print Zebras
+        </button>
 
         <button onClick={print} class="bg-white dark:bg-[#242424] dark:hover:bg-[#3a3a3a] rounded-md p-2 inline-flex items-center justify-center text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500">
             <span class="sr-only">Print</span>

@@ -25,6 +25,7 @@
     "gh-pages": "^4.0.0",
     "preact": "^10.13.2",
     "qr-scanner": "^1.4.2",
-    "qrcode": "^1.5.3"
+    "qrcode": "^1.5.3",
+    "zebra-browser-print-wrapper": "^0.1.4"
   }
 }
