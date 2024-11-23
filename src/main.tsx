@@ -493,7 +493,7 @@ const ButtonsAccion = () => {
             xAlignBase: 1,
             xAlignFactor: 26.1,
             fontSize: '0,2',
-            qrSize: 0.7
+            qrSize: 0.9
         }
 
         let commands = '';
@@ -518,7 +518,7 @@ const ButtonsAccion = () => {
               ^FDLA,${qr}
               ^FS
               
-              ^FT${config.xAlignBase + index * config.xAlignFactor},${config.yAlign}
+              ^FT${config.xAlignBase + index * config.xAlignFactor},${config.yAlign + 21.8}
               ^A0N,${config.fontSize}
               ^FH\
               ^FD${trimText(23, qr)}
