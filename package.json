@@ -3,7 +3,6 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "homepage": "https://maxterjunior.github.io/generador-qr",
   "scripts": {
     "start": "npx http-server ./dist",
     "dev": "vite",
@@ -11,7 +10,7 @@
     "preview": "vite preview",
     "deploy-init": ".\\deploy.sh",
     "predeploy": "npm run build",
-    "deploy": "gh-pages -d dist"
+    "deploy": "gh-pages -d dist -r https://github.com/maxterjunior/generador-qr"
   },
   "devDependencies": {
     "@preact/preset-vite": "^2.5.0",
