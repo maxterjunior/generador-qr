@@ -40,7 +40,7 @@ Minimum version required to store current data is: `+r+`.
                 </html>
                 `,h=window.open("","print","width=1000,height=600");h.document.write(f),h.document.close()},[e,n]=qe("typeSplit",!1),[i,o]=qe("enableHover",!1),[r,s]=qe("enableDualCheck",!1);H(()=>{const a=new CustomEvent("renderQrs",{detail:e});document.dispatchEvent(a)},[e]),H(()=>{const a=new CustomEvent("renderQrs",{detail:e});document.dispatchEvent(a),vn.value=i},[i]),H(()=>{const a=new CustomEvent("renderQrs",{detail:e});document.dispatchEvent(a),et.value=r},[r]);const l=()=>{var a;R.value.size?(R.value=new Set,localStorage.setItem(Me,"[]")):(R.value=new Set((a=k.value[$.value])==null?void 0:a.values),localStorage.setItem(Me,JSON.stringify(Array.from(R.value)))),L.value.size&&(L.value=new Set,localStorage.setItem(ft,"[]"))},c=()=>{const a=document.createElement("input");a.type="file",a.accept="image/*",a.click(),a.onchange=async()=>{var f;const p=(f=a.files)==null?void 0:f[0];if(p){const h=new FileReader;h.onload=async g=>{var b;const m=new Image;m.src=(b=g.target)==null?void 0:b.result,m.onload=async()=>{try{const _=await E.scanImage(m);_&&(k.value[$.value].input=k.value[$.value].input+`
 `+_,k.value[$.value].values=k.value[$.value].input.split(e?`
-`:/\s/).filter(w=>w).map(w=>w.trim()),k.value=[...k.value])}catch(_){console.error(_),console.log("No se pudo leer el código QR")}}},h.readAsDataURL(p)}}},u=async()=>{var v;const a=(v=k.value[$.value])==null?void 0:v.values;console.log(a);const p=(C,x)=>C.reduce((T,P,I)=>(I%x?T[T.length-1].push(P):T.push([P]),T),[]),f=(C,x)=>x.length>C?x.substring(0,C):x,h={yAlign:3.6,xAlignBase:1,xAlignFactor:26.1,fontSize:"0,2",qrSize:.7};let g="";const m=p(a,4);for(const[C,x]of m.entries()){g+=`^XA
+`:/\s/).filter(w=>w).map(w=>w.trim()),k.value=[...k.value])}catch(_){console.error(_),console.log("No se pudo leer el código QR")}}},h.readAsDataURL(p)}}},u=async()=>{var v;const a=(v=k.value[$.value])==null?void 0:v.values;console.log(a);const p=(C,x)=>C.reduce((T,P,I)=>(I%x?T[T.length-1].push(P):T.push([P]),T),[]),f=(C,x)=>x.length>C?x.substring(0,C):x,h={yAlign:3.6,xAlignBase:1,xAlignFactor:26.1,fontSize:"0,2",qrSize:.9};let g="";const m=p(a,4);for(const[C,x]of m.entries()){g+=`^XA
   ^MUM
   ^${C===m.length-1?"MMC":"MMT"}
   ^PW1000
@@ -51,7 +51,7 @@ Minimum version required to store current data is: `+r+`.
               ^FDLA,${P}
               ^FS
               
-              ^FT${h.xAlignBase+T*h.xAlignFactor},${h.yAlign}
+              ^FT${h.xAlignBase+T*h.xAlignFactor},${h.yAlign+21.8}
               ^A0N,${h.fontSize}
               ^FH              ^FD${f(23,P)}
               ^FS 
