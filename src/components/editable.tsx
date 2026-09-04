@@ -70,27 +70,54 @@ import { useEffect, useRef } from "preact/hooks";
 
 // export default Editable;
 
-const EditableLabel = ({ text, onChange, className }) => {
-    const labelRef = useRef<any>(null);
+interface EditableLabelProps {
+    text: string;
+    onChange: (value: string) => void;
+    className?: string;
+}
 
+const EditableLabel = ({ text, onChange, className }: EditableLabelProps) => {
+    const labelRef = useRef<HTMLLabelElement>(null);
+
+    // Mientras se edita, el contenido del nodo lo maneja el navegador. Por eso el
+    // JSX no declara hijos y este efecto es el único que escribe en él: antes
+    // convivían `{text}` (que diffea Preact) y este `textContent`, dos dueños del
+    // mismo nodo. Preact ignora los hijos que no creó él, así que no lo pisa.
+    // La comparación evita reescribir el nodo -y perder el cursor- en cada
+    // re-render mientras el usuario está tipeando.
     useEffect(() => {
-        if (labelRef.current) {
-            labelRef.current.textContent = text;
-        }
+        const el = labelRef.current;
+        if (el && el.textContent !== text) el.textContent = text;
     }, [text]);
+
+    const commit = (el: HTMLLabelElement) => {
+        const value = (el.textContent || '').replace(/[\n\r]+/g, ' ').trim();
+        // Si queda vacío se restaura el valor previo acá mismo: al no cambiar la
+        // prop no habría re-render, y el label se quedaría en blanco para siempre.
+        if (!value) return void (el.textContent = text);
+        if (value !== text) onChange(value);
+    };
 
     return (
         <label
             ref={labelRef}
             contentEditable
+            spellcheck={false}
             class={className}
-            onBlurCapture={(e: any) => {
-                const t = e.target.textContent.replace(/[\n\r]/g, ' ').trim() || text;
-                onChange(t);
+            onBlur={(e) => commit(e.currentTarget as HTMLLabelElement)}
+            onKeyDown={(e) => {
+                const el = e.currentTarget as HTMLLabelElement;
+                // Enter confirma en vez de insertar un salto de línea.
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    el.blur();
+                } else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    el.textContent = text;
+                    el.blur();
+                }
             }}
-        >
-            {text}
-        </label>
+        />
     );
 };
 

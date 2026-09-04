@@ -1,10 +1,9 @@
-import { signal } from "@preact/signals";
+import { signal, type Signal } from "@preact/signals";
 import { render } from "preact";
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import QR from "qrcode";
 import Editable from "./components/editable";
 import { QrIcon } from "./components/icons/qr";
-import { useLocalStorage } from "./hooks/localstorage";
 import "./index.css";
 import QrScanner from "qr-scanner";
 import { Confirm } from "./components/Confirm.component";
@@ -13,44 +12,189 @@ import ZebraBrowserPrintWrapper from "zebra-browser-print-wrapper";
 
 // Migra a preact
 interface Tab {
+    id: string;
     name: string;
     input: string;
     values: string[];
     date: string;
-    show: boolean;
 }
+
+// Identidad estable de la pestaña: sirve de `key` en el render y de referencia
+// para borrar/renombrar, en lugar de un índice que se corre al mutar la lista.
+const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+
+// El texto lo escribe el usuario y termina dentro de un document.write: sin
+// escapar, un valor con `</p><script>` se ejecuta y cualquier `<` o `&` rompe
+// el layout de la impresión.
+export const escapeHtml = (text: string) => text.replace(/[&<>"']/g, c =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string));
+
+// En ZPL `^` y `~` abren comandos, y `\` es el indicador hexadecimal que activa
+// `^FH\`: dentro de un ^FD rompen la etiqueta. ^FH permite escribirlos como \XX.
+// Sólo se activa cuando hace falta, para que las etiquetas sin estos caracteres
+// generen exactamente el mismo ZPL que antes.
+export const zplSpecial = /[\^~\\]/;
+export const escapeZpl = (text: string) => text.replace(/[\^~\\]/g, c => '\\' + c.charCodeAt(0).toString(16).toUpperCase());
 
 const cacheIndexKey = 'index-tab';
 const cacheTabsKey = 'tabs-qr';
 const cacheSelectedKey = 'qrs-selected';
 const cacheSelectedKeyAlter = 'qrs-selected-alter';
+const legacyKey = '__legacy__';   // selecciones del formato plano, a repartir por pestaña
 
 const indexTab = signal(-1);
 
 const tabs = signal<Tab[]>([]);
-const enableHoverSignal = signal(false);
-const enableDualCheckSignal = signal(false);
+// Única definición del criterio de separación; estaba repetido en el onInput del
+// textarea, en el listener del evento y en readQr. Además recorta ANTES de
+// filtrar: al revés, una línea con sólo espacios pasaba el filtro y quedaba como
+// un valor vacío, con el que no se puede generar ningún QR.
+const splitValues = (input: string, byLine: boolean) =>
+    input.split(byLine ? '\n' : /\s/).map(v => v.trim()).filter(v => v);
 
-const selectedQrs = signal<Set<string>>(new Set(JSON.parse(localStorage.getItem(cacheSelectedKey) || '[]')));
-const selectedQrsAlter = signal<Set<string>>(new Set(JSON.parse(localStorage.getItem(cacheSelectedKeyAlter) || '[]')));
+// Preferencias persistidas. Antes convivían un `useLocalStorage` en ButtonsAccion
+// y una copia con `useState` en TextArea, sincronizadas a mano con un CustomEvent
+// 'renderQrs' sobre el document: dos fuentes de verdad para el mismo dato.
+const typeSplitKey = 'typeSplit';   // false = separa por /\s/, true = por \n
+const enableHoverKey = 'enableHover';
+const enableDualCheckKey = 'enableDualCheck';
 
-const addTab = () => {
-    const tab: Tab = { name: `Tab ${tabs.value.length + 1}`, input: '', values: [], show: true, date: new Date().toString() }
-    tabs.value = [...tabs.value, tab];
-    indexTab.value = tabs.value.length - 1;
+const readFlag = (key: string) => localStorage.getItem(key) === 'true';
+
+const typeSplitSignal = signal(readFlag(typeSplitKey));
+const enableHoverSignal = signal(readFlag(enableHoverKey));
+const enableDualCheckSignal = signal(readFlag(enableDualCheckKey));
+
+const setFlag = (sig: Signal<boolean>, key: string, value: boolean) => {
+    sig.value = value;
+    localStorage.setItem(key, JSON.stringify(value));
 }
 
-const deleteTab = (index: number) => {
-    if (index < 0 || index >= tabs.value.length) return;
-    tabs.value.splice(index, 1);
+// Cambiar el separador sí obliga a recalcular los valores de todas las pestañas.
+// Los otros dos toggles son sólo de estilo y ya no disparan ese recálculo (antes
+// los tres emitían 'renderQrs' y reescribían localStorage en cada clic).
+const setTypeSplit = (byLine: boolean) => {
+    setFlag(typeSplitSignal, typeSplitKey, byLine);
+    for (const tab of tabs.value) tab.values = splitValues(tab.input, byLine);
     tabs.value = [...tabs.value];
-    indexTab.value = tabs.value.length - 1;
+}
+
+// Las selecciones se guardan por pestaña (`{ [tabId]: string[] }`). Antes eran
+// un set plano de textos: seleccionar un QR en una pestaña lo marcaba en
+// cualquier otra que tuviera el mismo texto, y nada se borraba nunca.
+type SelectionMap = Record<string, string[]>;
+
+const readSelections = (key: string): SelectionMap => {
+    try {
+        const raw = JSON.parse(localStorage.getItem(key) || '{}');
+        // Formato viejo (array plano): se conserva para migrarlo por pestaña.
+        return Array.isArray(raw) ? { [legacyKey]: raw } : raw;
+    } catch (error) {
+        console.error('Selección guardada ilegible', error);
+        return {};
+    }
+}
+
+const selections = signal<SelectionMap>(readSelections(cacheSelectedKey));
+const selectionsAlter = signal<SelectionMap>(readSelections(cacheSelectedKeyAlter));
+
+const selectedOf = (map: SelectionMap, tab?: Tab) => new Set(tab ? map[tab.id] ?? [] : []);
+
+const writeSelections = (key: string, sig: typeof selections, tab: Tab, values: Set<string>) => {
+    const next = { ...sig.value };
+    if (values.size) next[tab.id] = Array.from(values);
+    else delete next[tab.id];
+    sig.value = next;
+    localStorage.setItem(key, JSON.stringify(next));
+}
+
+// Al borrar una pestaña se van también sus selecciones, que si no quedaban
+// acumulándose en localStorage para siempre.
+const dropSelectionsOf = (tab: Tab) => {
+    for (const [key, sig] of [[cacheSelectedKey, selections], [cacheSelectedKeyAlter, selectionsAlter]] as const) {
+        if (!(tab.id in sig.value)) continue;
+        const next = { ...sig.value };
+        delete next[tab.id];
+        sig.value = next;
+        localStorage.setItem(key, JSON.stringify(next));
+    }
+}
+
+// Único punto que mueve la pestaña activa: siempre persiste el índice para
+// que no quede desincronizado con las pestañas guardadas al recargar.
+const setIndexTab = (index: number) => {
+    indexTab.value = index;
+    localStorage.setItem(cacheIndexKey, index.toString());
+}
+
+const addTab = () => {
+    const tab: Tab = { id: newId(), name: `Tab ${tabs.value.length + 1}`, input: '', values: [], date: new Date().toString() }
+    tabs.value = [...tabs.value, tab];
+    setIndexTab(tabs.value.length - 1);
+}
+
+const deleteTab = (id: string) => {
+    const index = tabs.value.findIndex(t => t.id === id);
+    if (index < 0) return;
+    dropSelectionsOf(tabs.value[index]);
+    tabs.value = tabs.value.filter(t => t.id !== id);
+    // Nunca dejar la app sin pestaña activa: sin ella el textarea escribía
+    // sobre undefined y la app quedaba inutilizable hasta recargar.
+    if (!tabs.value.length) return addTab();
+    setIndexTab(Math.min(index, tabs.value.length - 1));
+}
+
+const renameTab = (id: string, name: string) => {
+    // Se busca por id y no por índice: el índice capturado en el closure del
+    // render puede apuntar a otra pestaña -o a ninguna- cuando llega el blur.
+    const tab = tabs.value.find(t => t.id === id);
+    if (!tab || tab.name === name) return;
+    tab.name = name;
+    tabs.value = [...tabs.value];
 }
 
 const selectTab = (index: number) => {
     if (index < 0 || index >= tabs.value.length) return;
-    indexTab.value = index;
-    localStorage.setItem(cacheIndexKey, index.toString());
+    setIndexTab(index);
+}
+
+// Se ejecuta antes de suscribirse a `tabs`: la suscripción se dispara de
+// inmediato y, si corriera primero, pisaría el cache con [].
+// Reparte las selecciones del formato plano entre las pestañas: cada una se
+// queda sólo con los textos que realmente contiene, que es lo que el set global
+// significaba en la práctica.
+const migrateLegacySelections = () => {
+    for (const [key, sig] of [[cacheSelectedKey, selections], [cacheSelectedKeyAlter, selectionsAlter]] as const) {
+        const legacy = sig.value[legacyKey];
+        if (!legacy) continue;
+        const next: SelectionMap = {};
+        for (const tab of tabs.value) {
+            const own = tab.values.filter(v => legacy.includes(v));
+            if (own.length) next[tab.id] = own;
+        }
+        sig.value = next;
+        localStorage.setItem(key, JSON.stringify(next));
+    }
+}
+
+const restoreTabs = () => {
+    try {
+        const cache = JSON.parse(localStorage.getItem(cacheTabsKey) || '[]');
+        if (Array.isArray(cache) && cache.length) {
+            // pestañas guardadas antes de que existiera el id
+            for (const tab of cache) tab.id ??= newId();
+            tabs.value = cache;
+            const index = parseInt(localStorage.getItem(cacheIndexKey) || '0');
+            // Un índice guardado fuera de rango dejaba indexTab en -1: sin
+            // pestaña activa, UI en blanco y crash al escribir.
+            setIndexTab(Number.isNaN(index) ? 0 : Math.min(Math.max(index, 0), tabs.value.length - 1));
+            migrateLegacySelections();
+            return;
+        }
+    } catch (error) {
+        console.error("Error al obtener valores anteriores", error);
+    }
+    addTab();
 }
 
 
@@ -67,17 +211,21 @@ const HeaderTab = () => {
     }
 
     const [confirm, setConfirm] = useState(false);
-    const [selected, setSelected] = useState<{ i: number, name: string }>();
+    const [selected, setSelected] = useState<{ id: string, name: string }>();
 
-    const confirmDeleteTab = (tab: Tab, i: number) => {
-        setSelected({ i, name: tab.name });
+    const confirmDeleteTab = (tab: Tab) => {
+        setSelected({ id: tab.id, name: tab.name });
         setConfirm(true);
     }
 
     return <>
         <Confirm
-            message={selected?.name || ''}
-            onConfirm={() => deleteTab(selected?.i || 0)}
+            title="¿Eliminar la pestaña?"
+            description={`Se eliminará «${selected?.name}» y no se podrá recuperar.`}
+            confirmLabel="Eliminar"
+            // Sin pestaña elegida no se borra nada: antes `selected?.i || 0`
+            // caía en el índice 0 y borraba la primera.
+            onConfirm={() => selected && deleteTab(selected.id)}
             open={confirm}
             setOpen={setConfirm}
         />
@@ -87,28 +235,21 @@ const HeaderTab = () => {
                     <ul class="-mb-px flex items-center gap-4 text-sm font-medium min-h-[50px]">
                         {
                             tabs.value.map((t, i) =>
-                                <li class="flex-1 min-w-[250px] max-w-[450px]">
+                                <li key={t.id} class="flex-1 min-w-[250px] max-w-[450px]">
                                     <span
                                         className={`cursor-pointer relative w-full text-center flex items-center justify-center gap-2 px-1 py-1 after:absolute after:left-0 after:bottom-0 after:h-0.5 after:w-full ${indexTab.value === i ? 'text-blue-700 dark:text-blue-500 after:bg-blue-700 hover:text-blue-700 font-bold' : 'hover:after:bg-blue-400  dark:text-white'}`}
                                         onClick={() => selectTab(i)}
                                     >
                                         <Editable
-                                            text={tabs.value[i].name}
-                                            // placeholder="Nombre de la pestaña"
-                                            // type="input"
-                                            onChange={(value) => {
-                                                console.log('send', value)
-                                                if (value) {
-                                                    setTimeout(() => {
-                                                        tabs.value[i].name = value
-                                                        tabs.value = [...tabs.value]
-                                                    }, 100);
-                                                }
-                                            }}
+                                            text={t.name}
+                                            // El setTimeout de 100ms que había acá esquivaba el
+                                            // conflicto entre Preact y el contentEditable; con
+                                            // EditableLabel arreglado, la escritura es directa.
+                                            onChange={(value) => renameTab(t.id, value)}
                                             className={`w-full`}
                                         />
 
-                                        <button onClick={() => confirmDeleteTab(t, i)} type="button" class="bg-white rounded-md p-2 inline-flex items-center justify-center text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500 dark:bg-[#242424]">
+                                        <button onClick={() => confirmDeleteTab(t)} type="button" class="bg-white rounded-md p-2 inline-flex items-center justify-center text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500 dark:bg-[#242424]">
                                             <span class="sr-only">Close menu</span>
                                             <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -135,18 +276,17 @@ const TextArea = () => {
 
     const ref = useRef<HTMLTextAreaElement>(null);
 
+    const maxHeight = 200;
+
+    // Se mide con scrollHeight en lugar de contar saltos de línea: así las líneas
+    // largas que envuelven también cuentan y dejan de quedar cortadas.
     const resizeTextarea = () => {
-        const textarea = ref?.current;
-        if (textarea) {
-            const lines = textarea.value.split(/\r*\n/).length;
-            if (lines > 5) {
-                textarea.style.overflowY = "scroll";
-                textarea.style.height = "200px";
-            } else {
-                textarea.style.overflowY = "hidden";
-                textarea.style.height = `${lines * 1.5}rem`;
-            }
-        }
+        const textarea = ref.current;
+        if (!textarea) return;
+        textarea.style.height = 'auto';
+        const needed = textarea.scrollHeight;
+        textarea.style.height = `${Math.min(needed, maxHeight)}px`;
+        textarea.style.overflowY = needed > maxHeight ? 'scroll' : 'hidden';
     }
 
     useEffect(() => {
@@ -158,32 +298,18 @@ const TextArea = () => {
         ref?.current?.focus();
     }, [])
 
-    const [typeSplit, setTypeSplit] = useState(localStorage.getItem('typeSplit') === 'true' ? true : false); // false = \t\n, true = \n
-
-    useEffect(() => {
-        const listener = (e) => {
-
-            setTypeSplit(e.detail);
-            // Reasignar valores
-            for (const tab of tabs.value) {
-                tab.values = tab.input.split(e.detail ? '\n' : /\s/).filter((v: string) => v).map((v: string) => v.trim());
-            }
-
-            tabs.value = [...tabs.value];
-        }
-        document.addEventListener('renderQrs', listener);
-        return () => document.removeEventListener('renderQrs', listener);
-    }, [])
-
     return <div class="flex justify-center m-10">
         <textarea
             ref={ref}
             class="block p-2.5 w-full max-w-lg text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-300 focus:ring-blue-500 focus:border-blue-500 dark:bg-[#242424] dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
             placeholder="Texto a convertir"
-            value={tabs.value[indexTab.value]?.input}
+            value={tabs.value[indexTab.value]?.input ?? ''}
             onInput={(e) => {
-                tabs.value[indexTab.value]!.input = (e.target as HTMLTextAreaElement).value;
-                tabs.value[indexTab.value]!.values = (e.target as HTMLTextAreaElement).value.split(typeSplit ? '\n' : /\s/).filter((v: string) => v).map((v: string) => v.trim());
+                const tab = tabs.value[indexTab.value];
+                if (!tab) return;
+                const value = (e.target as HTMLTextAreaElement).value;
+                tab.input = value;
+                tab.values = splitValues(value, typeSplitSignal.value);
                 tabs.value = [...tabs.value];
                 resizeTextarea();
             }}
@@ -194,11 +320,32 @@ const TextArea = () => {
 
 const QRCode = ({ value, size }: { value: string, size: number }) => {
     const canvas = useRef<HTMLCanvasElement>(null);
+    const [error, setError] = useState(false);
+
     useEffect(() => {
-        if (!canvas.current) return;
-        QR.toCanvas(canvas.current, value, { width: size });
+        const el = canvas.current;
+        if (!el) return;
+        setError(false);
+        // qrcode dibuja de forma síncrona y sólo rechaza la promesa. Sin este
+        // catch el canvas conservaba el QR anterior debajo de la etiqueta nueva:
+        // un código que no corresponde al texto, sin ningún aviso.
+        QR.toCanvas(el, value, { width: size }).catch((e: unknown) => {
+            el.getContext('2d')?.clearRect(0, 0, el.width, el.height);
+            console.error('No se pudo generar el QR de:', value, e);
+            setError(true);
+        });
     }, [value, size]);
-    return <canvas class='rounded-3xl' ref={canvas} />
+
+    // El canvas se mantiene montado siempre (si se desmontara, `canvas.current`
+    // quedaría en null y el componente no podría recuperarse del error).
+    return <div class="relative">
+        <canvas class='rounded-3xl' width={size} height={size} ref={canvas} />
+        {error ? <div
+            class="absolute inset-0 flex items-center justify-center p-4 text-sm font-medium text-center text-red-600 bg-white border-2 border-red-500 border-dashed rounded-3xl dark:bg-[#242424] dark:text-red-400"
+            role="alert">
+            No se pudo generar el QR
+        </div> : null}
+    </div>
 }
 
 const TabContent = () => {
@@ -208,32 +355,33 @@ const TabContent = () => {
         classQr += ' hover:border-gray-900/10 hover:bg-gray-900/10 hover:!opacity-100 group-hover:opacity-5 transition-opacity transform hover:scale-110 duration-300'
     }
 
+    const tab = tabs.value[indexTab.value];
+    const selected = selectedOf(selections.value, tab);
+    const selectedAlter = selectedOf(selectionsAlter.value, tab);
+
     const selectQr = (v: string) => {
+        if (!tab) return;
 
         if (enableDualCheckSignal.value) {
-
-            if (!selectedQrs.value.has(v) && !selectedQrsAlter.value.has(v)) {
-                selectedQrs.value.add(v);
-            } else if (selectedQrs.value.has(v)) {
-                selectedQrs.value.delete(v);
-                selectedQrsAlter.value.add(v);
-            } else if (selectedQrsAlter.value.has(v)) {
-                selectedQrsAlter.value.delete(v);
+            if (!selected.has(v) && !selectedAlter.has(v)) {
+                selected.add(v);
+            } else if (selected.has(v)) {
+                selected.delete(v);
+                selectedAlter.add(v);
+            } else if (selectedAlter.has(v)) {
+                selectedAlter.delete(v);
             }
         } else {
-            if (selectedQrs.value.has(v)) {
-                selectedQrs.value.delete(v);
+            if (selected.has(v)) {
+                selected.delete(v);
             } else {
-                selectedQrs.value.add(v);
-                selectedQrsAlter.value.delete(v);
+                selected.add(v);
+                selectedAlter.delete(v);
             }
         }
 
-        selectedQrs.value = new Set(selectedQrs.value);
-        localStorage.setItem(cacheSelectedKey, JSON.stringify(Array.from(selectedQrs.value)));
-
-        selectedQrsAlter.value = new Set(selectedQrsAlter.value);
-        localStorage.setItem(cacheSelectedKeyAlter, JSON.stringify(Array.from(selectedQrsAlter.value)));
+        writeSelections(cacheSelectedKey, selections, tab, selected);
+        writeSelections(cacheSelectedKeyAlter, selectionsAlter, tab, selectedAlter);
     }
 
     return <div class="flex-1 flex flex-col dark:bg-[#242424]">
@@ -248,7 +396,7 @@ const TabContent = () => {
                                 <QRCode value={v} size={200} />
                                 {/* banner */}
                                 {
-                                    selectedQrs.value.has(v) ?
+                                    selected.has(v) ?
                                         <div class="absolute flex justify-center items-center bg-orange-600 bg-opacity-50 w-full h-full top-0 left-0 rounded-[24px] transition-all duration-300" >
                                             <div class="absolute flex justify-center items-center w-full h-full hover:opacity-0">
                                                 <div class="absolute w-[150px] h-[15px] rounded-full -rotate-45 bg-orange-600 hover:hidden"></div>
@@ -258,7 +406,7 @@ const TabContent = () => {
                                         : null
                                 }
                                 {
-                                    enableDualCheckSignal.value && selectedQrsAlter.value.has(v) ?
+                                    enableDualCheckSignal.value && selectedAlter.has(v) ?
 
                                         <div class="absolute flex justify-center items-center bg-blue-600 bg-opacity-50 w-full h-full top-0 left-0 rounded-[24px] transition-all duration-300" >
                                             <div class="absolute flex justify-center items-center w-full h-full hover:opacity-0">
@@ -304,13 +452,13 @@ const YapeButton = () => {
         <>
             <div onClick={() => setShow(!show)} class="cursor-pointer">
                 {logoYape ?
-                    <img src='/generador-qr/yape.png' class="h-5" /> :
+                    <img src={`${import.meta.env.BASE_URL}yape.png`} class="h-5" /> :
                     <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                         <path d="M14.781,14.347h1.738c0.24,0,0.436-0.194,0.436-0.435v-1.739c0-0.239-0.195-0.435-0.436-0.435h-1.738c-0.239,0-0.435,0.195-0.435,0.435v1.739C14.347,14.152,14.542,14.347,14.781,14.347 M18.693,3.045H1.307c-0.48,0-0.869,0.39-0.869,0.869v12.17c0,0.479,0.389,0.869,0.869,0.869h17.387c0.479,0,0.869-0.39,0.869-0.869V3.915C19.562,3.435,19.173,3.045,18.693,3.045 M18.693,16.085H1.307V9.13h17.387V16.085z M18.693,5.653H1.307V3.915h17.387V5.653zM3.48,12.608h7.824c0.24,0,0.435-0.195,0.435-0.436c0-0.239-0.194-0.435-0.435-0.435H3.48c-0.24,0-0.435,0.195-0.435,0.435C3.045,12.413,3.24,12.608,3.48,12.608 M3.48,14.347h6.085c0.24,0,0.435-0.194,0.435-0.435s-0.195-0.435-0.435-0.435H3.48c-0.24,0-0.435,0.194-0.435,0.435S3.24,14.347,3.48,14.347"></path>
                     </svg>}
             </div>
             {show ? <div class="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center">
-                <img ref={ref} src='/generador-qr/yape-cristian.webp' class="max-h-[70%] border-collapse rounded-md" />
+                <img ref={ref} src={`${import.meta.env.BASE_URL}yape-cristian.webp`} class="max-h-[70%] border-collapse rounded-md" />
             </div> : null
             }
         </>
@@ -363,11 +511,24 @@ const FloatSocialNetwork = () => {
     </div>
 }
 
+const loadImage = (file: File) => new Promise<HTMLImageElement>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('No se pudo leer el archivo'));
+    reader.onload = () => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error('El archivo no es una imagen válida'));
+        img.src = reader.result as string;
+    };
+    reader.readAsDataURL(file);
+});
+
 const ButtonsAccion = () => {
 
     const print = async () => {
 
-        const data = tabs.value[indexTab.value]?.values;
+        const data = tabs.value[indexTab.value]?.values ?? [];
+        if (!data.length) return alert('No hay QRs para imprimir');
 
         const imgs = await Promise.all(data.map(e => QR.toDataURL(e, { width: 200 })))
 
@@ -397,95 +558,67 @@ const ButtonsAccion = () => {
 
                 </head>
                 <body onload="window.print();">
-                    ${imgs.map((v, i) => `<div class="qr"><img src="${v}" ></img><p>${data[i]}</p></div>`).join(" ")}
+                    ${imgs.map((v, i) => `<div class="qr"><img src="${v}" ></img><p>${escapeHtml(data[i])}</p></div>`).join(" ")}
                 </body>
                 </html>
                 `
         // ${data.map((v) => `<div class="qr"><img src="https://chart.googleapis.com/chart?chs=200x200&cht=qr&chl=${v}&choe=UTF-8" ></img><p>${v}</p></div>`).join(" ")}
 
         const win = window.open("", "print", "width=1000,height=600");
-        win!.document.write(html);
-        win!.document.close();
+        // window.open devuelve null cuando el navegador bloquea el popup.
+        if (!win) return alert('El navegador bloqueó la ventana de impresión. Permití las ventanas emergentes para este sitio.');
+        win.document.write(html);
+        win.document.close();
     }
 
-    const [typeSplit, setTypeSplit] = useLocalStorage('typeSplit', false);
-    const [enableHover, setEnableHover] = useLocalStorage('enableHover', false);
-    const [enableDualCheck, setEnableDualCheck] = useLocalStorage('enableDualCheck', false);
+    // Alterna entre seleccionar todo y no seleccionar nada en la pestaña actual.
+    // Antes limpiaba un set y el otro sólo a veces, dejándolos inconsistentes.
+    const toggleSelectAll = () => {
+        const tab = tabs.value[indexTab.value];
+        if (!tab) return;
 
-    useEffect(() => {
-        // Generate event change
-        const event = new CustomEvent('renderQrs', { detail: typeSplit });
-        document.dispatchEvent(event);
-    }, [typeSplit])
-
-    useEffect(() => {
-        // Generate event change
-        const event = new CustomEvent('renderQrs', { detail: typeSplit });
-        document.dispatchEvent(event);
-        enableHoverSignal.value = enableHover;
-    }, [enableHover])
-
-    useEffect(() => {
-        // Generate event change
-        const event = new CustomEvent('renderQrs', { detail: typeSplit });
-        document.dispatchEvent(event);
-        enableDualCheckSignal.value = enableDualCheck;
-    }, [enableDualCheck])
-
-    const clearSelection = () => {
-        if (selectedQrs.value.size) {
-            selectedQrs.value = new Set();
-            localStorage.setItem(cacheSelectedKey, '[]');
-        } else {
-            selectedQrs.value = new Set(tabs.value[indexTab.value]?.values);
-            localStorage.setItem(cacheSelectedKey, JSON.stringify(Array.from(selectedQrs.value)));
-        }
-
-        if (selectedQrsAlter.value.size) {
-            selectedQrsAlter.value = new Set();
-            localStorage.setItem(cacheSelectedKeyAlter, '[]');
-        }
-
+        const hasAny = selectedOf(selections.value, tab).size || selectedOf(selectionsAlter.value, tab).size;
+        writeSelections(cacheSelectedKey, selections, tab, hasAny ? new Set() : new Set(tab.values));
+        writeSelections(cacheSelectedKeyAlter, selectionsAlter, tab, new Set());
     }
 
     const readQr = () => {
         const input = document.createElement('input');
         input.type = 'file';
         input.accept = 'image/*';
-        input.click();
+        // El handler se registra antes del click: al revés dependía de que el
+        // diálogo del navegador tardara en abrir.
         input.onchange = async () => {
             const file = input.files?.[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = async (e) => {
-                    const img = new Image();
-                    img.src = e.target?.result as string;
-                    img.onload = async () => {
-                        try {
-                            const code = await QrScanner.scanImage(img)
-                            if (code) {
-                                tabs.value[indexTab.value].input = tabs.value[indexTab.value].input + '\n' + code;
-                                tabs.value[indexTab.value].values = tabs.value[indexTab.value].input.split(typeSplit ? '\n' : /\s/).filter((v: string) => v).map((v: string) => v.trim());
-                                tabs.value = [...tabs.value];
-                            }
-                        } catch (error) {
-                            console.error(error);
-                            console.log('No se pudo leer el código QR');
+            if (!file) return;
 
-                        }
-                    }
-                }
-                reader.readAsDataURL(file);
+            try {
+                const img = await loadImage(file);
+                const code = await QrScanner.scanImage(img);
+                if (!code) return alert('No se encontró ningún código QR en la imagen');
+
+                const tab = tabs.value[indexTab.value];
+                if (!tab) return;
+                tab.input = tab.input ? tab.input + '\n' + code : code;
+                tab.values = splitValues(tab.input, typeSplitSignal.value);
+                tabs.value = [...tabs.value];
+            } catch (error) {
+                // Antes esto era un console.log: el usuario elegía una imagen y
+                // no pasaba absolutamente nada.
+                console.error(error);
+                alert('No se pudo leer el código QR de esa imagen');
             }
         }
+        input.click();
     }
 
     const printZebra = async () => {
-        const qrs = tabs.value[indexTab.value]?.values;
-        console.log(qrs);
+        const qrs = tabs.value[indexTab.value]?.values ?? [];
+        if (!qrs.length) return alert('No hay QRs para imprimir');
 
         const arraySplit = (arr: string[], size: number) => arr.reduce((acc, e, i) => (i % size ? acc[acc.length - 1].push(e) : acc.push([e]), acc), [] as string[][]);
         const trimText = (length: number, text: string) => text.length > length ? text.substring(0, length) : text;
+
 
         // Define printer
         const config = {
@@ -501,27 +634,27 @@ const ButtonsAccion = () => {
         const filas = arraySplit(qrs, 4);
 
 
-        for (const [index, fila] of filas.entries()) {
+        for (const [rowIndex, fila] of filas.entries()) {
 
             commands += `^XA
   ^MUM
-  ^${index === filas.length - 1 ? 'MMC' : 'MMT'}
+  ^${rowIndex === filas.length - 1 ? 'MMC' : 'MMT'}
   ^PW1000
   ^LL1218
   ^LS0 
   `;
 
-            for (const [index, qr] of fila.entries()) {
+            for (const [col, qr] of fila.entries()) {
 
-                commands += `^FT${1.2 + config.xAlignBase + index * config.xAlignFactor},${config.yAlign + 21.7}
-              ^BQN,2,${config.qrSize}
-              ^FDLA,${qr}
+                commands += `^FT${1.2 + config.xAlignBase + col * config.xAlignFactor},${config.yAlign + 21.7}
+              ^BQN,2,${config.qrSize}${zplSpecial.test(qr) ? '\n              ^FH\\' : ''}
+              ^FDLA,${zplSpecial.test(qr) ? escapeZpl(qr) : qr}
               ^FS
               
-              ^FT${config.xAlignBase + index * config.xAlignFactor},${config.yAlign + 21.8}
+              ^FT${config.xAlignBase + col * config.xAlignFactor},${config.yAlign + 21.8}
               ^A0N,${config.fontSize}
               ^FH\
-              ^FD${trimText(23, qr)}
+              ^FD${escapeZpl(trimText(23, qr))}
               ^FS 
   `;
 
@@ -571,7 +704,7 @@ const ButtonsAccion = () => {
             <label class="text-orange-500 font-bold">Check</label>
             <label class="text-blue-500 font-bold">Dual</label>
             <label class="relative inline-flex items-center cursor-pointer">
-                <input type="checkbox" checked={enableDualCheck} class="sr-only peer" onChange={() => setEnableDualCheck(!enableDualCheck)} />
+                <input type="checkbox" checked={enableDualCheckSignal.value} class="sr-only peer" onChange={() => setFlag(enableDualCheckSignal, enableDualCheckKey, !enableDualCheckSignal.value)} />
                 <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
             </label>
         </div>
@@ -588,7 +721,7 @@ const ButtonsAccion = () => {
 
         {/* Button clear */}
         <div class="relative inline-flex items-center gap-2 mr-5">
-            <button onClick={clearSelection} class="bg-white dark:bg-[#242424] dark:hover:bg-[#3a3a3a] rounded-md p-2 inline-flex items-center justify-center text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500">
+            <button onClick={toggleSelectAll} class="bg-white dark:bg-[#242424] dark:hover:bg-[#3a3a3a] rounded-md p-2 inline-flex items-center justify-center text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500">
                 <span class="">Selected</span>
                 <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -600,7 +733,7 @@ const ButtonsAccion = () => {
         <div class="relative inline-flex items-center gap-2 mr-5">
             <label class="text-blue-500 font-bold">Hover</label>
             <label class="relative inline-flex items-center cursor-pointer">
-                <input type="checkbox" checked={enableHover} class="sr-only peer" onChange={() => setEnableHover(!enableHover)} />
+                <input type="checkbox" checked={enableHoverSignal.value} class="sr-only peer" onChange={() => setFlag(enableHoverSignal, enableHoverKey, !enableHoverSignal.value)} />
                 <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
             </label>
         </div>
@@ -608,7 +741,7 @@ const ButtonsAccion = () => {
         <div class="relative inline-flex items-center gap-2 mr-5">
             <label class="text-red-500 font-bold">/\s/</label>
             <label class="relative inline-flex items-center cursor-pointer">
-                <input type="checkbox" checked={typeSplit} class="sr-only peer" onChange={() => setTypeSplit(!typeSplit)} />
+                <input type="checkbox" checked={typeSplitSignal.value} class="sr-only peer" onChange={() => setTypeSplit(!typeSplitSignal.value)} />
                 <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
             </label>
             <label class="text-orange-500 font-bold">\n</label>
@@ -648,29 +781,8 @@ const Footer = () => {
 }
 
 const App = () => {
-
-    useEffect(() => {
-        try {
-            const cache = JSON.parse(localStorage.getItem(cacheTabsKey) || '[]');
-            if (cache.length) {
-                for (const tab of cache) tab.show ??= true;
-                tabs.value = cache;
-            } else {
-                addTab();
-            }
-
-            const index = parseInt(localStorage.getItem(cacheIndexKey) || '0');
-            if (index >= 0 && index < tabs.value.length) {
-                indexTab.value = index;
-            }
-
-        } catch (error) {
-            console.error("Error al obtener valores anteriores", error);
-            addTab();
-        }
-    }, []);
-
     return <div class="flex flex-col h-screen dark:bg-[#242424]">
+        <h1 class="sr-only">Generador de códigos QR masivo</h1>
         <HeaderTab />
         <TextArea />
         <TabContent />
@@ -679,12 +791,19 @@ const App = () => {
 }
 
 
-// Subscribe to tabs changes
+restoreTabs();
 
+// Subscribe to tabs changes
+// Persiste siempre, incluido el array vacío: con el guard `if (tabs.length)`,
+// borrar la última pestaña dejaba el cache viejo y las pestañas reaparecían.
 tabs.subscribe((tabs) => {
-    if (tabs.length) {
-        localStorage.setItem(cacheTabsKey, JSON.stringify(tabs))
-    }
+    localStorage.setItem(cacheTabsKey, JSON.stringify(tabs))
 });
+
+// Preact no borra los hijos preexistentes del contenedor raíz: sólo limpia los
+// sobrantes de un elemento que esté representado por un vnode (diffElementNodes),
+// y #app no lo está —se pasa como parentDom y se le diffea un Fragment—. Por eso
+// el bloque estático se saca explícitamente en vez de confiar en el framework.
+document.getElementById('pre-render')?.remove();
 
 render(<App />, document.getElementById('app') as HTMLElement);
