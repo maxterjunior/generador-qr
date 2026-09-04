@@ -212,55 +212,58 @@ const HeaderTab = () => {
             open={confirm}
             setOpen={setConfirm}
         />
-        <div class="header-container dark:bg-[#242424]">
-            <div class="space-y-5">
-                <div class="border-b border-b-gray-200 overflow-y-hidden dark:border-[#242424] overflow-x-auto mr-10" ref={scrollRef}>
-                    <ul class="-mb-px flex items-center gap-4 text-sm font-medium min-h-[50px]">
-                        {
-                            tabs.value.map((t, i) =>
-                                <li key={t.id} class="flex-1 min-w-[250px] max-w-[450px]">
-                                    <span
-                                        className={`cursor-pointer relative w-full text-center flex items-center justify-center gap-2 px-1 py-1 after:absolute after:left-0 after:bottom-0 after:h-0.5 after:w-full ${indexTab.value === i ? 'text-blue-700 dark:text-blue-500 after:bg-blue-700 hover:text-blue-700 font-bold' : 'hover:after:bg-blue-400  dark:text-white'}`}
-                                        onClick={() => selectTab(i)}
-                                    >
-                                        <Editable
-                                            text={t.name}
-                                            // El setTimeout de 100ms que había acá esquivaba el
-                                            // conflicto entre Preact y el contentEditable; con
-                                            // EditableLabel arreglado, la escritura es directa.
-                                            onChange={(value) => renameTab(t.id, value)}
-                                            className={`w-full`}
-                                        />
+        <div class="sticky top-0 z-20 flex items-stretch w-full bg-white border-b border-gray-200 dark:bg-[#242424] dark:border-white/10">
+            {/* La tira de pestañas se desplaza sola y el botón de nueva pestaña
+                queda fuera de ella, siempre a la vista. Antes era un `absolute`
+                sin ancestro posicionado: se anclaba al documento, así que en el
+                teléfono se iba con el scroll y tapaba la última pestaña. */}
+            <div class="flex-1 min-w-0 overflow-x-auto overflow-y-hidden overscroll-x-contain tabs-scroll" ref={scrollRef}>
+                <ul class="flex items-center gap-1 px-1 text-sm font-medium sm:gap-4 min-h-[52px]">
+                    {
+                        tabs.value.map((t, i) =>
+                            <li key={t.id} class="flex-1 min-w-[10.5rem] sm:min-w-[250px] max-w-[450px]">
+                                <span
+                                    className={`cursor-pointer relative w-full text-center flex items-center justify-center gap-1 sm:gap-2 px-1 py-2 after:absolute after:left-0 after:bottom-0 after:h-0.5 after:w-full ${indexTab.value === i ? 'text-blue-700 dark:text-blue-500 after:bg-blue-700 hover:text-blue-700 font-bold' : 'hover:after:bg-blue-400  dark:text-white'}`}
+                                    onClick={() => selectTab(i)}
+                                >
+                                    {/* Sólo la pestaña activa se puede renombrar. Con el
+                                        contentEditable siempre encendido, en un teléfono cada
+                                        toque para cambiar de lote abría el teclado. */}
+                                    <Editable
+                                        text={t.name}
+                                        editable={indexTab.value === i}
+                                        onChange={(value) => renameTab(t.id, value)}
+                                        className="flex-1 min-w-0 px-1 truncate rounded-sm outline-none focus:bg-black/5 dark:focus:bg-white/10"
+                                    />
 
-                                        {/* Cuántos códigos tiene la pestaña. Se omite en las
-                                            vacías: un 0 es ruido, no información. */}
-                                        {t.values.length ?
-                                            <span
-                                                aria-label={`${t.values.length} ${t.values.length === 1 ? 'código' : 'códigos'}`}
-                                                class="flex-shrink-0 rounded px-1.5 py-px text-[11px] font-medium tabular-nums bg-black/10 text-gray-500 dark:bg-white/10 dark:text-gray-400">
-                                                {t.values.length}
-                                            </span>
-                                            : null}
+                                    {/* Cuántos códigos tiene la pestaña. Se omite en las
+                                        vacías: un 0 es ruido, no información. */}
+                                    {t.values.length ?
+                                        <span
+                                            aria-label={`${t.values.length} ${t.values.length === 1 ? 'código' : 'códigos'}`}
+                                            class="flex-shrink-0 rounded px-1.5 py-px text-[11px] font-medium tabular-nums bg-black/10 text-gray-500 dark:bg-white/10 dark:text-gray-400">
+                                            {t.values.length}
+                                        </span>
+                                        : null}
 
-                                        <button onClick={() => confirmDeleteTab(t)} type="button" class="bg-white rounded-md p-2 inline-flex items-center justify-center text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500 dark:bg-[#242424]">
-                                            <span class="sr-only">Close menu</span>
-                                            <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                                            </svg>
-                                        </button>
-                                    </span>
-                                </li>
-                            )
-                        }
-                        <button onClick={handler} type="button" class="absolute right-0 bg-white rounded-md p-2 inline-flex items-center justify-center text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500 dark:bg-[#242424]">
-                            <span class="sr-only">Add Tab</span>
-                            <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                            </svg>
-                        </button>
-                    </ul>
-                </div>
+                                    <button onClick={() => confirmDeleteTab(t)} type="button" class="flex-shrink-0 inline-flex items-center justify-center p-2 text-gray-400 rounded-md hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500 dark:hover:bg-white/10">
+                                        <span class="sr-only">Eliminar la pestaña {t.name}</span>
+                                        <svg class="w-5 h-5 sm:h-6 sm:w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                </span>
+                            </li>
+                        )
+                    }
+                </ul>
             </div>
+            <button onClick={handler} type="button" title="Nueva pestaña" class="inline-flex items-center self-stretch flex-shrink-0 px-4 text-gray-400 border-l border-gray-200 hover:text-gray-600 hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500 dark:border-white/10 dark:hover:bg-white/10">
+                <span class="sr-only">Nueva pestaña</span>
+                <svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                </svg>
+            </button>
         </div>
     </>
 }
@@ -295,10 +298,10 @@ const TextArea = () => {
         ref?.current?.focus();
     }, [])
 
-    return <div class="flex justify-center m-10">
+    return <div class="flex justify-center px-4 pt-4 pb-2 sm:px-10 sm:pt-10 sm:pb-8">
         <textarea
             ref={ref}
-            class="block p-2.5 w-full max-w-lg text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-300 focus:ring-blue-500 focus:border-blue-500 dark:bg-[#242424] dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+            class="block p-2.5 w-full max-w-lg text-base sm:text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-300 focus:ring-blue-500 focus:border-blue-500 dark:bg-[#242424] dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
             placeholder="Texto a convertir"
             value={tabs.value[indexTab.value]?.input ?? ''}
             onInput={(e) => {
@@ -326,7 +329,20 @@ const QRCode = ({ value, size }: { value: string, size: number }) => {
         // qrcode dibuja de forma síncrona y sólo rechaza la promesa. Sin este
         // catch el canvas conservaba el QR anterior debajo de la etiqueta nueva:
         // un código que no corresponde al texto, sin ningún aviso.
-        QR.toCanvas(el, value, { width: size }).catch((e: unknown) => {
+        const drawing = QR.toCanvas(el, value, { width: size });
+
+        // `width` deja el tamaño en el atributo del canvas -su resolución- y
+        // además en style.width/height. Ese style en línea le gana a la clase, y
+        // el QR se plantaba en sus `size` px en vez de ocupar la celda de la
+        // grilla: en un teléfono se salía de la pantalla. Al borrarlo queda la
+        // resolución alta del atributo y el tamaño lo decide el CSS.
+        // Se limpia acá y no en un .then: toCanvas ya dibujó -es síncrono- y
+        // esperar a la promesa dejaba un fotograma con el canvas a tamaño
+        // completo, visible como un salto de la grilla al tipear.
+        el.style.width = '';
+        el.style.height = '';
+
+        drawing.catch((e: unknown) => {
             el.getContext('2d')?.clearRect(0, 0, el.width, el.height);
             console.error('No se pudo generar el QR de:', value, e);
             setError(true);
@@ -335,10 +351,10 @@ const QRCode = ({ value, size }: { value: string, size: number }) => {
 
     // El canvas se mantiene montado siempre (si se desmontara, `canvas.current`
     // quedaría en null y el componente no podría recuperarse del error).
-    return <div class="relative">
-        <canvas class='rounded-3xl' width={size} height={size} ref={canvas} />
+    return <div class="relative w-full">
+        <canvas class="w-full h-auto rounded-2xl sm:rounded-3xl" width={size} height={size} ref={canvas} />
         {error ? <div
-            class="absolute inset-0 flex items-center justify-center p-4 text-sm font-medium text-center text-red-600 bg-white border-2 border-red-500 border-dashed rounded-3xl dark:bg-[#242424] dark:text-red-400"
+            class="absolute inset-0 flex items-center justify-center p-4 text-sm font-medium text-center text-red-600 bg-white border-2 border-red-500 border-dashed rounded-2xl sm:rounded-3xl dark:bg-[#242424] dark:text-red-400"
             role="alert">
             No se pudo generar el QR
         </div> : null}
@@ -347,9 +363,11 @@ const QRCode = ({ value, size }: { value: string, size: number }) => {
 
 const TabContent = () => {
     // Generar QRs with values
-    let classQr = 'flex flex-col items-center gap-2'
+    let classQr = 'flex flex-col items-center gap-2 w-full max-w-[200px] mx-auto min-w-0'
     if (enableHoverSignal.value) {
-        classQr += ' hover:border-gray-900/10 hover:bg-gray-900/10 hover:!opacity-100 group-hover:opacity-5 transition-opacity transform hover:scale-110 duration-300'
+        // Sólo de `sm` para arriba: en una pantalla táctil no hay puntero que
+        // señale, y el group-hover dejaba toda la grilla atenuada al tocar un código.
+        classQr += ' sm:transition-opacity sm:transform sm:duration-300 sm:hover:border-gray-900/10 sm:hover:bg-gray-900/10 sm:hover:!opacity-100 sm:group-hover:opacity-5 sm:hover:scale-110'
     }
 
     const tab = tabs.value[indexTab.value];
@@ -383,21 +401,21 @@ const TabContent = () => {
 
     return <div class="flex-1 flex flex-col dark:bg-[#242424]">
         <div class="flex-1 relative">
-            <div class="flex flex-wrap gap-20 p-2 mb-10 justify-center group">
+            <div class="grid grid-cols-[repeat(auto-fill,minmax(9.5rem,1fr))] sm:grid-cols-[repeat(auto-fill,minmax(200px,1fr))] justify-items-center gap-x-4 gap-y-6 sm:gap-x-10 sm:gap-y-12 px-3 sm:px-6 pt-2 pb-28 sm:pb-24 group">
                 {
                     tabs.value[indexTab.value]?.values.map((v, i) =>
                         <div key={i} class={classQr}>
                             <div
                                 onClick={() => selectQr(v)}
-                                class='relative cursor-pointer flex justify-center items-center transition-all duration-300 active:scale-95 hover:scale-105'>
-                                <QRCode value={v} size={200} />
+                                class="relative flex items-center justify-center w-full transition-all duration-300 cursor-pointer active:scale-95 sm:hover:scale-105">
+                                <QRCode value={v} size={256} />
                                 {/* banner */}
                                 {
                                     selected.has(v) ?
-                                        <div class="absolute flex justify-center items-center bg-orange-600 bg-opacity-50 w-full h-full top-0 left-0 rounded-[24px] transition-all duration-300" >
+                                        <div class="absolute flex justify-center items-center bg-orange-600 bg-opacity-50 w-full h-full top-0 left-0 rounded-2xl sm:rounded-[24px] transition-all duration-300" >
                                             <div class="absolute flex justify-center items-center w-full h-full hover:opacity-0">
-                                                <div class="absolute w-[150px] h-[15px] rounded-full -rotate-45 bg-orange-600 hover:hidden"></div>
-                                                <div class="absolute w-[150px] h-[15px] rounded-full rotate-45 bg-orange-600 hover:hidden"></div>
+                                                <div class="absolute w-[72%] h-[7%] rounded-full -rotate-45 bg-orange-600 hover:hidden"></div>
+                                                <div class="absolute w-[72%] h-[7%] rounded-full rotate-45 bg-orange-600 hover:hidden"></div>
                                             </div>
                                         </div>
                                         : null
@@ -405,17 +423,17 @@ const TabContent = () => {
                                 {
                                     enableDualCheckSignal.value && selectedAlter.has(v) ?
 
-                                        <div class="absolute flex justify-center items-center bg-blue-600 bg-opacity-50 w-full h-full top-0 left-0 rounded-[24px] transition-all duration-300" >
+                                        <div class="absolute flex justify-center items-center bg-blue-600 bg-opacity-50 w-full h-full top-0 left-0 rounded-2xl sm:rounded-[24px] transition-all duration-300" >
                                             <div class="absolute flex justify-center items-center w-full h-full hover:opacity-0">
-                                                <div class="absolute w-[150px] h-[15px] rounded-full -rotate-45 bg-blue-600"></div>
-                                                <div class="absolute w-[150px] h-[15px] rounded-full rotate-45 bg-blue-600" ></div>
+                                                <div class="absolute w-[72%] h-[7%] rounded-full -rotate-45 bg-blue-600"></div>
+                                                <div class="absolute w-[72%] h-[7%] rounded-full rotate-45 bg-blue-600" ></div>
                                             </div>
                                         </div>
 
                                         : null
                                 }
                             </div>
-                            <span class="text-base dark:text-white">{v}</span>
+                            <span class="w-full text-xs text-center break-all sm:text-base dark:text-white">{v}</span>
                         </div>
                     )
                 }
@@ -464,7 +482,7 @@ const YapeButton = () => {
 
 const FloatSocialNetwork = () => {
 
-    return <div class="dark:text-white gap-3 flex">
+    return <div class="flex items-center gap-3 text-sm dark:text-white">
         {/* <!-- Instagram --> */}
         <a href='https://www.instagram.com/_cventurac/' target='_blank' rel='noreferrer'>
             <svg
@@ -503,7 +521,7 @@ const FloatSocialNetwork = () => {
 
         <YapeButton />
 
-        <p>❤ por <a href="https://github.com/maxterjunior">Mj.asm</a></p>
+        <p class="whitespace-nowrap">❤ por <a href="https://github.com/maxterjunior">Mj.asm</a></p>
 
     </div>
 }
@@ -520,7 +538,7 @@ const loadImage = (file: File) => new Promise<HTMLImageElement>((resolve, reject
     reader.readAsDataURL(file);
 });
 
-const ButtonsAccion = () => {
+const ButtonsAccion = ({ compact, onOpenSettings }: { compact?: boolean, onOpenSettings?: () => void }) => {
 
     const print = async () => {
 
@@ -694,91 +712,191 @@ const ButtonsAccion = () => {
     }
 
 
-    return <div class="flex">
+    // En un teléfono los siete controles no entran en una fila: la barra táctil
+    // se queda con las cuatro acciones y los interruptores pasan a Ajustes.
+    if (compact) return <div class="grid grid-cols-5">
+        <TouchAction label="Leer" onClick={readQr}><QrIcon /></TouchAction>
+        <TouchAction label="Marcar" onClick={toggleSelectAll}><CheckAllIcon /></TouchAction>
+        <TouchAction label="Imprimir" onClick={print}><PrintIcon /></TouchAction>
+        <TouchAction label="Zebra" onClick={printZebra}><LabelIcon /></TouchAction>
+        <TouchAction label="Ajustes" onClick={() => onOpenSettings?.()}><GearIcon /></TouchAction>
+    </div>
+
+    return <div class="flex flex-wrap items-center justify-end gap-x-5 gap-y-2">
 
         {/* Dual Check */}
-        <div class="relative inline-flex items-center gap-2 mr-5">
-            <label class="text-orange-500 font-bold">Check</label>
-            <label class="text-blue-500 font-bold">Dual</label>
-            <label class="relative inline-flex items-center cursor-pointer">
-                <input type="checkbox" checked={enableDualCheckSignal.value} class="sr-only peer" onChange={() => setFlag(enableDualCheckSignal, enableDualCheckKey, !enableDualCheckSignal.value)} />
-                <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
-            </label>
+        <div class="inline-flex items-center gap-2">
+            <label class="font-bold text-orange-500">Check</label>
+            <label class="font-bold text-blue-500">Dual</label>
+            <Switch label="Marcar en dos colores" checked={enableDualCheckSignal.value} onChange={() => setFlag(enableDualCheckSignal, enableDualCheckKey, !enableDualCheckSignal.value)} />
         </div>
 
         {/* Button read qr */}
-        <div class="relative inline-flex items-center gap-2 mr-5">
-            <button onClick={readQr} class="bg-white dark:bg-[#242424] dark:hover:bg-[#3a3a3a] rounded-md p-2 inline-flex items-center justify-center text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500">
-                <span class="mr-2">Read</span>
-                <QrIcon />
-            </button>
-
-        </div>
-
+        <button onClick={readQr} class="inline-flex items-center justify-center gap-2 p-2 text-gray-400 bg-white rounded-md dark:bg-transparent dark:hover:bg-white/10 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500">
+            <span>Read</span>
+            <QrIcon />
+        </button>
 
         {/* Button clear */}
-        <div class="relative inline-flex items-center gap-2 mr-5">
-            <button onClick={toggleSelectAll} class="bg-white dark:bg-[#242424] dark:hover:bg-[#3a3a3a] rounded-md p-2 inline-flex items-center justify-center text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500">
-                <span class="">Selected</span>
-                <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-            </button>
+        <button onClick={toggleSelectAll} class="inline-flex items-center justify-center gap-2 p-2 text-gray-400 bg-white rounded-md dark:bg-transparent dark:hover:bg-white/10 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500">
+            <span>Selected</span>
+            <CheckAllIcon />
+        </button>
+
+        <div class="inline-flex items-center gap-2">
+            <label class="font-bold text-blue-500">Hover</label>
+            <Switch label="Resaltar el código señalado" checked={enableHoverSignal.value} onChange={() => setFlag(enableHoverSignal, enableHoverKey, !enableHoverSignal.value)} />
         </div>
 
-
-        <div class="relative inline-flex items-center gap-2 mr-5">
-            <label class="text-blue-500 font-bold">Hover</label>
-            <label class="relative inline-flex items-center cursor-pointer">
-                <input type="checkbox" checked={enableHoverSignal.value} class="sr-only peer" onChange={() => setFlag(enableHoverSignal, enableHoverKey, !enableHoverSignal.value)} />
-                <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
-            </label>
+        <div class="inline-flex items-center gap-2">
+            <label class="font-bold text-red-500">/\s/</label>
+            <Switch label="Separar por saltos de línea" checked={typeSplitSignal.value} onChange={() => setTypeSplit(!typeSplitSignal.value)} />
+            <label class="font-bold text-orange-500">\n</label>
         </div>
 
-        <div class="relative inline-flex items-center gap-2 mr-5">
-            <label class="text-red-500 font-bold">/\s/</label>
-            <label class="relative inline-flex items-center cursor-pointer">
-                <input type="checkbox" checked={typeSplitSignal.value} class="sr-only peer" onChange={() => setTypeSplit(!typeSplitSignal.value)} />
-                <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
-            </label>
-            <label class="text-orange-500 font-bold">\n</label>
-        </div>
-
-        <button onClick={printZebra} class="bg-white dark:bg-[#242424] dark:hover:bg-[#3a3a3a] rounded-md p-2 inline-flex items-center justify-center text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500">
+        <button onClick={printZebra} class="inline-flex items-center justify-center p-2 text-gray-400 bg-white rounded-md dark:bg-transparent dark:hover:bg-white/10 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500">
             Print Zebras
         </button>
 
-        <button onClick={print} class="bg-white dark:bg-[#242424] dark:hover:bg-[#3a3a3a] rounded-md p-2 inline-flex items-center justify-center text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500">
-            <span class="sr-only">Print</span>
-            <svg class="h-6 w-6" fill="currentColor" stroke="currentColor" version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" enable-background="new 0 0 64 64" >
-                <g id="SVGRepo_bgCarrier" stroke-width="0"></g>
-                <g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g>
-                <g id="SVGRepo_iconCarrier">
-                    <g id="Printer"> <path d="M57.7881012,14.03125H52.5v-8.0625c0-2.2091999-1.7909012-4-4-4h-33c-2.2091999,0-4,1.7908001-4,4v8.0625H6.2119002 C2.7871001,14.03125,0,16.8183498,0,20.2431507V46.513649c0,3.4248009,2.7871001,6.2119026,6.2119002,6.2119026h2.3798995 c0.5527,0,1-0.4472008,1-1c0-0.5527-0.4473-1-1-1H6.2119002C3.8896,50.7255516,2,48.8359489,2,46.513649V20.2431507 c0-2.3223,1.8896-4.2119007,4.2119002-4.2119007h51.5762024C60.1102982,16.03125,62,17.9208508,62,20.2431507V46.513649 c0,2.3223-1.8897018,4.2119026-4.2118988,4.2119026H56c-0.5527992,0-1,0.4473-1,1c0,0.5527992,0.4472008,1,1,1h1.7881012 C61.2128983,52.7255516,64,49.9384499,64,46.513649V20.2431507C64,16.8183498,61.2128983,14.03125,57.7881012,14.03125z M13.5,5.96875c0-1.1027999,0.8971996-2,2-2h33c1.1027985,0,2,0.8972001,2,2v8h-37V5.96875z"></path>
-                        <path d="M44,45.0322495H20c-0.5517998,0-0.9990005,0.4472008-0.9990005,0.9990005S19.4482002,47.0302505,20,47.0302505h24 c0.5517006,0,0.9990005-0.4472008,0.9990005-0.9990005S44.5517006,45.0322495,44,45.0322495z"></path>
-                        <path d="M44,52.0322495H20c-0.5517998,0-0.9990005,0.4472008-0.9990005,0.9990005S19.4482002,54.0302505,20,54.0302505h24 c0.5517006,0,0.9990005-0.4472008,0.9990005-0.9990005S44.5517006,52.0322495,44,52.0322495z"></path>
-                        <circle cx="7.9590998" cy="21.8405495" r="2"></circle>
-                        <circle cx="14.2856998" cy="21.8405495" r="2"></circle>
-                        <circle cx="20.6121998" cy="21.8405495" r="2"></circle>
-                        <path d="M11,62.03125h42v-26H11V62.03125z M13.4036999,38.4349518h37.1925964v21.1925964H13.4036999V38.4349518z"></path>
-                    </g>
-                </g>
-            </svg>
+        <button onClick={print} class="inline-flex items-center justify-center p-2 text-gray-400 bg-white rounded-md dark:bg-transparent dark:hover:bg-white/10 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500">
+            <span class="sr-only">Imprimir</span>
+            <PrintIcon />
         </button>
     </div>
 }
 
+// --- Piezas compartidas por la fila de escritorio y la barra táctil -----------
+
+const PrintIcon = () => (
+    <svg class="w-6 h-6" fill="currentColor" stroke="currentColor" version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" aria-hidden="true">
+        <path d="M57.7881012,14.03125H52.5v-8.0625c0-2.2091999-1.7909012-4-4-4h-33c-2.2091999,0-4,1.7908001-4,4v8.0625H6.2119002 C2.7871001,14.03125,0,16.8183498,0,20.2431507V46.513649c0,3.4248009,2.7871001,6.2119026,6.2119002,6.2119026h2.3798995 c0.5527,0,1-0.4472008,1-1c0-0.5527-0.4473-1-1-1H6.2119002C3.8896,50.7255516,2,48.8359489,2,46.513649V20.2431507 c0-2.3223,1.8896-4.2119007,4.2119002-4.2119007h51.5762024C60.1102982,16.03125,62,17.9208508,62,20.2431507V46.513649 c0,2.3223-1.8897018,4.2119026-4.2118988,4.2119026H56c-0.5527992,0-1,0.4473-1,1c0,0.5527992,0.4472008,1,1,1h1.7881012 C61.2128983,52.7255516,64,49.9384499,64,46.513649V20.2431507C64,16.8183498,61.2128983,14.03125,57.7881012,14.03125z M13.5,5.96875c0-1.1027999,0.8971996-2,2-2h33c1.1027985,0,2,0.8972001,2,2v8h-37V5.96875z"></path>
+        <path d="M44,45.0322495H20c-0.5517998,0-0.9990005,0.4472008-0.9990005,0.9990005S19.4482002,47.0302505,20,47.0302505h24 c0.5517006,0,0.9990005-0.4472008,0.9990005-0.9990005S44.5517006,45.0322495,44,45.0322495z"></path>
+        <path d="M44,52.0322495H20c-0.5517998,0-0.9990005,0.4472008-0.9990005,0.9990005S19.4482002,54.0302505,20,54.0302505h24 c0.5517006,0,0.9990005-0.4472008,0.9990005-0.9990005S44.5517006,52.0322495,44,52.0322495z"></path>
+        <circle cx="7.9590998" cy="21.8405495" r="2"></circle>
+        <circle cx="14.2856998" cy="21.8405495" r="2"></circle>
+        <circle cx="20.6121998" cy="21.8405495" r="2"></circle>
+        <path d="M11,62.03125h42v-26H11V62.03125z M13.4036999,38.4349518h37.1925964v21.1925964H13.4036999V38.4349518z"></path>
+    </svg>
+)
+
+const CheckAllIcon = () => (
+    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M9 11.5l3 3L21.5 5" />
+        <path d="M20 12.5V19a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2h11" />
+    </svg>
+)
+
+const LabelIcon = () => (
+    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M20.6 13.4l-7.2 7.2a2 2 0 01-2.8 0L2 12V2h10l8.6 8.6a2 2 0 010 2.8z" />
+        <path d="M7 7h.01" />
+    </svg>
+)
+
+const GearIcon = () => (
+    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="3" />
+        <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09A1.65 1.65 0 008 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 004.6 15a1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 4.6a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019.4 9c.2.5.68.85 1.22.91H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z" />
+    </svg>
+)
+
+// El pomo se posiciona con `after:` contra este label, así que el label envuelve
+// sólo al interruptor: si abarcara también los textos, el pomo saldría corrido.
+const Switch = ({ checked, onChange, label }: { checked: boolean, onChange: () => void, label: string }) => (
+    <label class="relative inline-flex items-center cursor-pointer">
+        <input type="checkbox" checked={checked} class="sr-only peer" aria-label={label} onChange={onChange} />
+        <div class="flex-shrink-0 w-11 h-6 sm:w-9 sm:h-5 bg-gray-200 peer-focus-visible:ring-4 peer-focus-visible:ring-blue-300 dark:peer-focus-visible:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 sm:after:h-4 sm:after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+    </label>
+)
+
+const TouchAction = ({ label, onClick, children }: { label: string, onClick: () => void, children: any }) => (
+    <button type="button" onClick={onClick}
+        class="flex flex-col items-center justify-center gap-1 px-1 py-2 min-h-[3.5rem] text-[11px] font-medium text-gray-500 active:bg-black/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500 dark:text-gray-300 dark:active:bg-white/10">
+        <span class="flex items-center justify-center w-6 h-6" aria-hidden="true">{children}</span>
+        {label}
+    </button>
+)
+
+/**
+ * Ajustes del teléfono. Son los mismos tres interruptores de la barra de
+ * escritorio, pero con el nombre escrito entero: en la barra alcanza con la
+ * abreviatura porque está al lado de los códigos, acá no hay ese contexto.
+ */
+const SettingsSheet = ({ onClose }: { onClose: () => void }) => {
+
+    useEffect(() => {
+        const onKeyDown = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+        document.addEventListener('keydown', onKeyDown);
+        return () => document.removeEventListener('keydown', onKeyDown);
+    }, []);
+
+    const row = "flex items-center justify-between gap-4 py-3 border-b border-black/5 last:border-0 dark:border-white/10";
+
+    return <div
+        class="fixed inset-0 z-40 flex items-end bg-zinc-900/60 backdrop-blur-sm animate-fade-in motion-reduce:animate-none dark:bg-black/70 lg:hidden"
+        onClick={onClose}>
+        <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Ajustes"
+            onClick={(e) => e.stopPropagation()}
+            class="w-full bg-white rounded-t-2xl animate-dialog-in motion-reduce:animate-none dark:bg-[#1f1f1f] px-5 pt-2 pb-[calc(1.25rem+env(safe-area-inset-bottom))] max-h-[85vh] overflow-y-auto">
+
+            <div class="w-10 h-1 mx-auto mb-3 rounded-full bg-zinc-300 dark:bg-zinc-600" aria-hidden="true"></div>
+
+            <div class="text-sm text-zinc-800 dark:text-zinc-200">
+                <div class={row}>
+                    <span>Marcar en dos colores</span>
+                    <Switch label="Marcar en dos colores" checked={enableDualCheckSignal.value} onChange={() => setFlag(enableDualCheckSignal, enableDualCheckKey, !enableDualCheckSignal.value)} />
+                </div>
+                <div class={row}>
+                    <span>Resaltar el código señalado</span>
+                    <Switch label="Resaltar el código señalado" checked={enableHoverSignal.value} onChange={() => setFlag(enableHoverSignal, enableHoverKey, !enableHoverSignal.value)} />
+                </div>
+                <div class={row}>
+                    <span>
+                        Separar por saltos de línea
+                        <span class="block text-xs text-zinc-500 dark:text-zinc-400">
+                            {typeSplitSignal.value ? 'Un código por línea' : 'Un código por cada espacio o salto'}
+                        </span>
+                    </span>
+                    <Switch label="Separar por saltos de línea" checked={typeSplitSignal.value} onChange={() => setTypeSplit(!typeSplitSignal.value)} />
+                </div>
+            </div>
+
+            <div class="flex items-center justify-between gap-4 pt-4">
+                <FloatSocialNetwork />
+                <button type="button" onClick={onClose}
+                    class="px-3 py-2 text-sm font-medium rounded-lg text-zinc-700 hover:bg-zinc-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 dark:text-zinc-300 dark:hover:bg-white/10">
+                    Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
 const Footer = () => {
-    return <footer
-        class="flex items-center justify-between z-10 px-3 py-1 flex-row fixed bottom-0 w-full"
-    >
-        <FloatSocialNetwork />
-        <ButtonsAccion />
-    </footer>
+
+    const [settings, setSettings] = useState(false);
+
+    return <>
+        {settings ? <SettingsSheet onClose={() => setSettings(false)} /> : null}
+        <footer class="fixed bottom-0 z-10 w-full border-t bg-white/95 backdrop-blur border-black/5 dark:bg-[#242424]/95 dark:border-white/10 pb-[env(safe-area-inset-bottom)]">
+            {/* Escritorio: enlaces de un lado, controles del otro. */}
+            <div class="items-center justify-between hidden gap-4 px-3 py-1 lg:flex">
+                <FloatSocialNetwork />
+                <ButtonsAccion />
+            </div>
+            {/* Teléfono: barra de acciones con blancos del tamaño de un dedo. */}
+            <div class="lg:hidden">
+                <ButtonsAccion compact onOpenSettings={() => setSettings(true)} />
+            </div>
+        </footer>
+    </>
 }
 
 const App = () => {
-    return <div class="flex flex-col h-screen dark:bg-[#242424]">
+    return <div class="flex flex-col app-shell dark:bg-[#242424]">
         <h1 class="sr-only">Generador de códigos QR masivo</h1>
         <HeaderTab />
         <TextArea />

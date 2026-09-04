@@ -74,9 +74,12 @@ interface EditableLabelProps {
     text: string;
     onChange: (value: string) => void;
     className?: string;
+    /** Fuera de la pestaña activa el label es sólo texto: en un teléfono, un
+     *  contentEditable siempre encendido abre el teclado en cada toque. */
+    editable?: boolean;
 }
 
-const EditableLabel = ({ text, onChange, className }: EditableLabelProps) => {
+const EditableLabel = ({ text, onChange, className, editable = true }: EditableLabelProps) => {
     const labelRef = useRef<HTMLLabelElement>(null);
 
     // Mientras se edita, el contenido del nodo lo maneja el navegador. Por eso el
@@ -101,7 +104,7 @@ const EditableLabel = ({ text, onChange, className }: EditableLabelProps) => {
     return (
         <label
             ref={labelRef}
-            contentEditable
+            contentEditable={editable}
             spellcheck={false}
             class={className}
             onBlur={(e) => commit(e.currentTarget as HTMLLabelElement)}

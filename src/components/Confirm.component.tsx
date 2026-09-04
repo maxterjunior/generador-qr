@@ -116,13 +116,13 @@ export const Confirm = ({
                         ref={cancelRef}
                         type="button"
                         onClick={close}
-                        class="px-3 py-1.5 text-sm font-medium rounded-lg text-zinc-700 hover:bg-zinc-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 dark:text-zinc-300 dark:hover:bg-white/10 dark:focus-visible:ring-zinc-500">
+                        class="px-4 py-2.5 sm:px-3 sm:py-1.5 text-sm font-medium rounded-lg text-zinc-700 hover:bg-zinc-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 dark:text-zinc-300 dark:hover:bg-white/10 dark:focus-visible:ring-zinc-500">
                         {cancelLabel}
                     </button>
                     <button
                         type="button"
                         onClick={() => { close(); onConfirm() }}
-                        class="px-3 py-1.5 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#1f1f1f]">
+                        class="px-4 py-2.5 sm:px-3 sm:py-1.5 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#1f1f1f]">
                         {confirmLabel}
                     </button>
                 </div>

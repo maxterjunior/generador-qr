@@ -2,6 +2,38 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Alto de la app. 100dvh descuenta la barra del navegador móvil, que con 100vh
+   deja la barra de acciones fija por debajo del borde visible; la línea previa
+   es el respaldo para los navegadores que no entienden dvh. */
+.app-shell {
+    min-height: 100vh;
+    min-height: 100dvh;
+}
+
+/* Sin el destello gris del toque y sin el retardo de 300ms del doble toque. */
+button,
+[role="button"],
+a,
+label,
+summary {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+}
+
+/* La tira de pestañas se desplaza con el dedo: en pantalla chica la barra de
+   scroll de 10px sólo le roba alto. En escritorio se deja, ahí sí indica que
+   hay más pestañas de las que se ven. */
+@media (max-width: 639px) {
+    .tabs-scroll {
+        scrollbar-width: none;
+    }
+
+    .tabs-scroll::-webkit-scrollbar {
+        height: 0;
+        width: 0;
+    }
+}
+
 
 /* Scroll */
 /* Firefox */
