@@ -4,7 +4,7 @@ Genera muchos **códigos QR a la vez** a partir de una lista de textos, y los im
 
 **➡️ [Abrir la app](https://maxterjunior.github.io/generador-qr/)**
 
-![Generador QR](./public/open_graph.webp)
+![Generador QR](./public/open_graph.jpg)
 
 ## Qué hace
 

@@ -16,7 +16,6 @@ interface Tab {
     name: string;
     input: string;
     values: string[];
-    date: string;
 }
 
 // Identidad estable de la pestaña: sirve de `key` en el render y de referencia
@@ -40,7 +39,6 @@ const cacheIndexKey = 'index-tab';
 const cacheTabsKey = 'tabs-qr';
 const cacheSelectedKey = 'qrs-selected';
 const cacheSelectedKeyAlter = 'qrs-selected-alter';
-const legacyKey = '__legacy__';   // selecciones del formato plano, a repartir por pestaña
 
 const indexTab = signal(-1);
 
@@ -87,8 +85,7 @@ type SelectionMap = Record<string, string[]>;
 const readSelections = (key: string): SelectionMap => {
     try {
         const raw = JSON.parse(localStorage.getItem(key) || '{}');
-        // Formato viejo (array plano): se conserva para migrarlo por pestaña.
-        return Array.isArray(raw) ? { [legacyKey]: raw } : raw;
+        return raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
     } catch (error) {
         console.error('Selección guardada ilegible', error);
         return {};
@@ -128,7 +125,7 @@ const setIndexTab = (index: number) => {
 }
 
 const addTab = () => {
-    const tab: Tab = { id: newId(), name: `Tab ${tabs.value.length + 1}`, input: '', values: [], date: new Date().toString() }
+    const tab: Tab = { id: newId(), name: `Tab ${tabs.value.length + 1}`, input: '', values: [] }
     tabs.value = [...tabs.value, tab];
     setIndexTab(tabs.value.length - 1);
 }
@@ -160,23 +157,6 @@ const selectTab = (index: number) => {
 
 // Se ejecuta antes de suscribirse a `tabs`: la suscripción se dispara de
 // inmediato y, si corriera primero, pisaría el cache con [].
-// Reparte las selecciones del formato plano entre las pestañas: cada una se
-// queda sólo con los textos que realmente contiene, que es lo que el set global
-// significaba en la práctica.
-const migrateLegacySelections = () => {
-    for (const [key, sig] of [[cacheSelectedKey, selections], [cacheSelectedKeyAlter, selectionsAlter]] as const) {
-        const legacy = sig.value[legacyKey];
-        if (!legacy) continue;
-        const next: SelectionMap = {};
-        for (const tab of tabs.value) {
-            const own = tab.values.filter(v => legacy.includes(v));
-            if (own.length) next[tab.id] = own;
-        }
-        sig.value = next;
-        localStorage.setItem(key, JSON.stringify(next));
-    }
-}
-
 const restoreTabs = () => {
     try {
         const cache = JSON.parse(localStorage.getItem(cacheTabsKey) || '[]');
@@ -188,7 +168,6 @@ const restoreTabs = () => {
             // Un índice guardado fuera de rango dejaba indexTab en -1: sin
             // pestaña activa, UI en blanco y crash al escribir.
             setIndexTab(Number.isNaN(index) ? 0 : Math.min(Math.max(index, 0), tabs.value.length - 1));
-            migrateLegacySelections();
             return;
         }
     } catch (error) {
@@ -211,18 +190,22 @@ const HeaderTab = () => {
     }
 
     const [confirm, setConfirm] = useState(false);
-    const [selected, setSelected] = useState<{ id: string, name: string }>();
+    const [selected, setSelected] = useState<{ id: string, name: string, count: number }>();
 
     const confirmDeleteTab = (tab: Tab) => {
-        setSelected({ id: tab.id, name: tab.name });
+        setSelected({ id: tab.id, name: tab.name, count: tab.values.length });
         setConfirm(true);
     }
 
     return <>
         <Confirm
-            title="¿Eliminar la pestaña?"
-            description={`Se eliminará «${selected?.name}» y no se podrá recuperar.`}
-            confirmLabel="Eliminar"
+            title="Eliminar la pestaña"
+            description="Se borra la pestaña con todo su contenido. No se puede deshacer."
+            item={selected ? {
+                name: selected.name,
+                detail: `${selected.count} ${selected.count === 1 ? 'código' : 'códigos'}`,
+            } : undefined}
+            confirmLabel="Eliminar pestaña"
             // Sin pestaña elegida no se borra nada: antes `selected?.i || 0`
             // caía en el índice 0 y borraba la primera.
             onConfirm={() => selected && deleteTab(selected.id)}
@@ -248,6 +231,16 @@ const HeaderTab = () => {
                                             onChange={(value) => renameTab(t.id, value)}
                                             className={`w-full`}
                                         />
+
+                                        {/* Cuántos códigos tiene la pestaña. Se omite en las
+                                            vacías: un 0 es ruido, no información. */}
+                                        {t.values.length ?
+                                            <span
+                                                aria-label={`${t.values.length} ${t.values.length === 1 ? 'código' : 'códigos'}`}
+                                                class="flex-shrink-0 rounded px-1.5 py-px text-[11px] font-medium tabular-nums bg-black/10 text-gray-500 dark:bg-white/10 dark:text-gray-400">
+                                                {t.values.length}
+                                            </span>
+                                            : null}
 
                                         <button onClick={() => confirmDeleteTab(t)} type="button" class="bg-white rounded-md p-2 inline-flex items-center justify-center text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500 dark:bg-[#242424]">
                                             <span class="sr-only">Close menu</span>
@@ -283,10 +276,14 @@ const TextArea = () => {
     const resizeTextarea = () => {
         const textarea = ref.current;
         if (!textarea) return;
+        // Colapsar el alto para medir mueve el scroll, así que se guarda y se
+        // restaura: si no, al abrir una pestaña larga aparecía por el final.
+        const { scrollTop } = textarea;
         textarea.style.height = 'auto';
         const needed = textarea.scrollHeight;
         textarea.style.height = `${Math.min(needed, maxHeight)}px`;
         textarea.style.overflowY = needed > maxHeight ? 'scroll' : 'hidden';
+        textarea.scrollTop = scrollTop;
     }
 
     useEffect(() => {
